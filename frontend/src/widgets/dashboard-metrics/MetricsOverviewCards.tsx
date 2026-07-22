@@ -3,7 +3,7 @@
 import React from 'react';
 import { Wallet, TrendingUp, TrendingDown, Calendar, CreditCard, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { DashboardSummary } from '@/entities/analytics/analyticsApi';
-import { formatVND } from '@/shared/lib/formatters';
+import { AmountDisplay } from '@/shared/ui/AmountDisplay';
 
 interface MetricsProps {
   data: DashboardSummary | null;
@@ -24,53 +24,51 @@ export const MetricsOverviewCards: React.FC<MetricsProps> = ({ data, isLoading }
   const cards = [
     {
       title: 'Tổng Số Dư',
-      value: formatVND(data.totalBalance),
+      amount: data.totalBalance,
+      isMoney: true,
       subtitle: 'Tất cả các ví',
       icon: Wallet,
       color: 'from-indigo-500 to-purple-600',
-      textColor: 'text-indigo-500',
     },
     {
       title: 'Thu Nhập Tháng',
-      value: formatVND(data.monthlyIncome),
+      amount: data.monthlyIncome,
+      isMoney: true,
       subtitle: 'Tháng này',
       icon: TrendingUp,
-      badgeIcon: ArrowUpRight,
       color: 'from-emerald-500 to-teal-600',
-      textColor: 'text-emerald-500',
     },
     {
       title: 'Chi Tiêu Tháng',
-      value: formatVND(data.monthlyExpense),
+      amount: data.monthlyExpense,
+      isMoney: true,
       subtitle: 'Tháng này',
       icon: TrendingDown,
-      badgeIcon: ArrowDownRight,
       color: 'from-rose-500 to-pink-600',
-      textColor: 'text-rose-500',
     },
     {
       title: 'Chi Tiêu Hôm Nay',
-      value: formatVND(data.todayExpense),
+      amount: data.todayExpense,
+      isMoney: true,
       subtitle: 'Hôm nay',
       icon: Calendar,
       color: 'from-amber-500 to-orange-600',
-      textColor: 'text-amber-500',
     },
     {
       title: 'Thu Nhập Hôm Nay',
-      value: formatVND(data.todayIncome),
+      amount: data.todayIncome,
+      isMoney: true,
       subtitle: 'Hôm nay',
       icon: TrendingUp,
       color: 'from-cyan-500 to-blue-600',
-      textColor: 'text-cyan-500',
     },
     {
       title: 'Tổng Giao Dịch',
       value: `${data.totalTransactions} lượt`,
+      isMoney: false,
       subtitle: 'Lịch sử ghi chép',
       icon: CreditCard,
       color: 'from-violet-500 to-indigo-600',
-      textColor: 'text-violet-500',
     },
   ];
 
@@ -91,8 +89,12 @@ export const MetricsOverviewCards: React.FC<MetricsProps> = ({ data, isLoading }
                 <Icon className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight truncate">
-              {card.value}
+            <div className="text-base md:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
+              {card.isMoney ? (
+                <AmountDisplay amount={card.amount!} className="text-base md:text-lg font-bold text-slate-900 dark:text-white" />
+              ) : (
+                card.value
+              )}
             </div>
             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 block mt-1">
               {card.subtitle}

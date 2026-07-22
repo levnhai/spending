@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Trash2, ArrowUpRight, ArrowDownRight, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { Search, Trash2, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { Transaction, transactionApi } from '@/entities/transaction/transactionApi';
-import { formatVND, formatDate } from '@/shared/lib/formatters';
+import { formatDate } from '@/shared/lib/formatters';
+import { AmountDisplay } from '@/shared/ui/AmountDisplay';
 
 interface WidgetProps {
   transactions: Transaction[];
@@ -127,7 +128,9 @@ export const TransactionListWidget: React.FC<WidgetProps> = ({ transactions, onR
 
                 {/* Right: Amount & Actions */}
                 <div className="flex items-center gap-4">
-                  <span
+                  <AmountDisplay
+                    amount={t.amount}
+                    prefix={isExpense ? '-' : isIncome ? '+' : ''}
                     className={`font-bold text-base ${
                       isExpense
                         ? 'text-rose-500'
@@ -135,11 +138,7 @@ export const TransactionListWidget: React.FC<WidgetProps> = ({ transactions, onR
                         ? 'text-emerald-500'
                         : 'text-indigo-500'
                     }`}
-                  >
-                    {isExpense && '-'}
-                    {isIncome && '+'}
-                    {formatVND(t.amount)}
-                  </span>
+                  />
 
                   <button
                     onClick={() => handleDelete(t._id)}

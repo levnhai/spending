@@ -8,6 +8,7 @@ import { walletApi, Wallet } from '@/entities/wallet/walletApi';
 import { categoryApi, Category } from '@/entities/category/categoryApi';
 import { formatVND } from '@/shared/lib/formatters';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
+import { useUserStore } from '@/entities/user/useUserStore';
 
 export const BillsPageView: React.FC = () => {
   const [bills, setBills] = useState<RecurringBill[]>([]);
@@ -15,6 +16,7 @@ export const BillsPageView: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isAddBillOpen, setIsAddBillOpen] = useState(false);
+  const showAmount = useUserStore((s) => s.showAmount);
 
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -127,7 +129,7 @@ export const BillsPageView: React.FC = () => {
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
                   <div>
                     <span className="text-xs text-slate-400 font-medium block">Số tiền</span>
-                    <span className="text-xl font-bold text-rose-500">{formatVND(b.amount)}</span>
+                    <span className="text-xl font-bold text-rose-500">{formatVND(b.amount, showAmount)}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-xs text-slate-400 font-medium block">Ví thanh toán</span>

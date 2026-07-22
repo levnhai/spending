@@ -26,6 +26,23 @@ interface ChartsProps {
   topCategories: TopCategoryItem[];
 }
 
+const formatAxisVND = (v: number): string => {
+  if (v === 0) return '0đ';
+  if (Math.abs(v) >= 1_000_000_000) {
+    const val = v / 1_000_000_000;
+    return `${Number.isInteger(val) ? val : val.toFixed(1)}B`;
+  }
+  if (Math.abs(v) >= 1_000_000) {
+    const val = v / 1_000_000;
+    return `${Number.isInteger(val) ? val : val.toFixed(1)}M`;
+  }
+  if (Math.abs(v) >= 1_000) {
+    const val = v / 1_000;
+    return `${Number.isInteger(val) ? val : val.toFixed(1)}k`;
+  }
+  return `${v}đ`;
+};
+
 export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineData, topCategories }) => {
   const COLORS = ['#F43F5E', '#F97316', '#EC4899', '#EAB308', '#6366F1', '#A855F7', '#06B6D4', '#14B8A6'];
 
@@ -75,7 +92,7 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
             <BarChart data={barData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
               <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(v) => `${v / 1000000}M`} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={formatAxisVND} />
               <Tooltip formatter={(value: any) => formatVND(Number(value))} />
               <Legend />
               <Bar dataKey="income" name="Thu nhập" fill="#10B981" radius={[4, 4, 0, 0]} />
@@ -95,7 +112,7 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
             <LineChart data={lineData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
               <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(v) => `${v / 1000}k`} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={formatAxisVND} />
               <Tooltip formatter={(value: any) => formatVND(Number(value))} />
               <Line type="monotone" dataKey="amount" name="Chi tiêu" stroke="#6366F1" strokeWidth={3} dot={{ r: 3 }} />
             </LineChart>

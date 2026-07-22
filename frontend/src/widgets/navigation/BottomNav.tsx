@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Receipt, Plus, Wallet, PieChart } from 'lucide-react';
+import { LayoutDashboard, Receipt, Plus, CalendarDays, PieChart } from 'lucide-react';
 
 interface BottomNavProps {
   onOpenQuickAdd: () => void;
@@ -15,7 +15,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
   const items = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Giao dịch', href: '/transactions', icon: Receipt },
-    { name: 'Ví', href: '/wallets', icon: Wallet },
+    { name: 'Hóa đơn', href: '/bills', icon: CalendarDays },
     { name: 'Ngân sách', href: '/budgets', icon: PieChart },
   ];
 

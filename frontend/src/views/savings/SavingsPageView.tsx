@@ -6,12 +6,14 @@ import { Plus, Trash2, Target, PiggyBank, ArrowUpRight, CheckCircle2 } from 'luc
 import { goalApi, SavingsGoal } from '@/entities/savings-goal/goalApi';
 import { formatVND, formatDate } from '@/shared/lib/formatters';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
+import { useUserStore } from '@/entities/user/useUserStore';
 
 export const SavingsPageView: React.FC = () => {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
+  const showAmount = useUserStore((s) => s.showAmount);
 
   const [title, setTitle] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -137,10 +139,10 @@ export const SavingsPageView: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-slate-500 dark:text-slate-400">
-                      Đã tích lũy: <strong className="text-emerald-500">{formatVND(g.currentAmount)}</strong>
+                      Đã tích lũy: <strong className="text-emerald-500">{formatVND(g.currentAmount, showAmount)}</strong>
                     </span>
                     <span className="text-slate-500 dark:text-slate-400">
-                      Mục tiêu: <strong className="text-slate-900 dark:text-white">{formatVND(g.targetAmount)}</strong>
+                      Mục tiêu: <strong className="text-slate-900 dark:text-white">{formatVND(g.targetAmount, showAmount)}</strong>
                     </span>
                   </div>
 
@@ -157,7 +159,7 @@ export const SavingsPageView: React.FC = () => {
                         <CheckCircle2 className="w-4 h-4" /> Hoàn thành mục tiêu!
                       </span>
                     ) : (
-                      <span className="text-slate-400">Còn thiếu {formatVND(Math.max(0, g.targetAmount - g.currentAmount))}</span>
+                      <span className="text-slate-400">Còn thiếu {formatVND(Math.max(0, g.targetAmount - g.currentAmount), showAmount)}</span>
                     )}
                     <span className="font-bold text-slate-900 dark:text-white">{g.percentage}%</span>
                   </div>

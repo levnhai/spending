@@ -13,9 +13,11 @@ interface UserState {
   user: User | null;
   token: string | null;
   theme: 'dark' | 'light';
+  showAmount: boolean;
   setAuth: (user: User, token: string) => void;
   logout: () => void;
   toggleTheme: () => void;
+  toggleShowAmount: () => void;
   initAuth: () => void;
 }
 
@@ -23,6 +25,7 @@ export const useUserStore = create<UserState>((set) => ({
   user: null,
   token: null,
   theme: 'dark',
+  showAmount: false, // Mặc định là HIDE (ẩn tiền)
 
   setAuth: (user, token) => {
     if (typeof window !== 'undefined') {
@@ -54,11 +57,15 @@ export const useUserStore = create<UserState>((set) => ({
     });
   },
 
+  toggleShowAmount: () => {
+    set((state) => ({ showAmount: !state.showAmount }));
+  },
+
   initAuth: () => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('finflow_token');
       const userStr = localStorage.getItem('finflow_user');
-      const savedTheme = localStorage.getItem('finflow_theme') as 'dark' | 'light' || 'dark';
+      const savedTheme = (localStorage.getItem('finflow_theme') as 'dark' | 'light') || 'dark';
 
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');

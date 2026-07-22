@@ -7,12 +7,14 @@ import { budgetApi, Budget } from '@/entities/budget/budgetApi';
 import { categoryApi, Category } from '@/entities/category/categoryApi';
 import { formatVND } from '@/shared/lib/formatters';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
+import { useUserStore } from '@/entities/user/useUserStore';
 
 export const BudgetsPageView: React.FC = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false);
+  const showAmount = useUserStore((s) => s.showAmount);
 
   const [categoryId, setCategoryId] = useState('');
   const [limitAmount, setLimitAmount] = useState('');
@@ -138,10 +140,10 @@ export const BudgetsPageView: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-semibold">
                       <span className="text-slate-500 dark:text-slate-400">
-                        Đã chi: <strong className="text-slate-900 dark:text-white">{formatVND(b.spentAmount)}</strong>
+                        Đã chi: <strong className="text-slate-900 dark:text-white">{formatVND(b.spentAmount, showAmount)}</strong>
                       </span>
                       <span className="text-slate-500 dark:text-slate-400">
-                        Hạn mức: <strong className="text-slate-900 dark:text-white">{formatVND(b.limitAmount)}</strong>
+                        Hạn mức: <strong className="text-slate-900 dark:text-white">{formatVND(b.limitAmount, showAmount)}</strong>
                       </span>
                     </div>
 
@@ -163,15 +165,15 @@ export const BudgetsPageView: React.FC = () => {
                     <div className="flex items-center justify-between text-xs pt-1">
                       {isExceeded ? (
                         <span className="text-rose-500 font-bold flex items-center gap-1">
-                          <AlertTriangle className="w-4 h-4" /> Vượt hạn mức {formatVND(Math.abs(b.remaining))}!
+                          <AlertTriangle className="w-4 h-4" /> Vượt hạn mức {formatVND(Math.abs(b.remaining), showAmount)}!
                         </span>
                       ) : isWarning ? (
                         <span className="text-amber-500 font-bold flex items-center gap-1">
-                          <AlertTriangle className="w-4 h-4" /> Sắp vượt hạn mức! Còn lại {formatVND(b.remaining)}
+                          <AlertTriangle className="w-4 h-4" /> Sắp vượt hạn mức! Còn lại {formatVND(b.remaining, showAmount)}
                         </span>
                       ) : (
                         <span className="text-emerald-500 font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" /> Còn lại {formatVND(b.remaining)}
+                          <CheckCircle2 className="w-4 h-4" /> Còn lại {formatVND(b.remaining, showAmount)}
                         </span>
                       )}
                       <span className="font-bold text-slate-700 dark:text-slate-300">{b.percentage}%</span>

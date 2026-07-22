@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/widgets/header/Header';
-import { Plus, Trash2, ArrowRightLeft, Wallet as WalletIcon, CreditCard, Building, Banknote } from 'lucide-react';
+import { Plus, Trash2, Wallet as WalletIcon, CreditCard, Building, Banknote } from 'lucide-react';
 import { walletApi, Wallet } from '@/entities/wallet/walletApi';
-import { formatVND } from '@/shared/lib/formatters';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
+import { AmountDisplay } from '@/shared/ui/AmountDisplay';
 
 export const WalletsPageView: React.FC = () => {
   const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -127,10 +127,11 @@ export const WalletsPageView: React.FC = () => {
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60">
-                  <span className="text-xs text-slate-400 font-medium">Số dư khả dụng</span>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mt-0.5">
-                    {formatVND(w.currentBalance)}
-                  </div>
+                  <span className="text-xs text-slate-400 font-medium block mb-0.5">Số dư khả dụng</span>
+                  <AmountDisplay
+                    amount={w.currentBalance}
+                    className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight"
+                  />
                 </div>
               </div>
             );
