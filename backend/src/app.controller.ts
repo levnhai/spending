@@ -6,7 +6,11 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getHello() {
+    return {
+      status: 'ok',
+      message: 'FinFlow Backend API is running',
+      documentation: '/api/docs',
+    };
   }
 }
