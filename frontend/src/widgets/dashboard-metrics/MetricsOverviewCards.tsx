@@ -15,7 +15,7 @@ export const MetricsOverviewCards: React.FC<MetricsProps> = ({ data, isLoading }
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-28 rounded-2xl bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
+          <div key={i} className="h-28 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-800/40"></div>
         ))}
       </div>
     );
