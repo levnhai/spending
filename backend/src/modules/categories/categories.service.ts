@@ -28,8 +28,11 @@ export class CategoriesService {
   }
 
   async update(userId: string, id: string, dto: UpdateCategoryDto) {
+    const userObjId = new Types.ObjectId(userId);
+    const catObjId = new Types.ObjectId(id);
+
     const category = await this.categoryModel.findOneAndUpdate(
-      { _id: new Types.ObjectId(id), userId: new Types.ObjectId(userId) },
+      { _id: catObjId, $or: [{ userId: userObjId }, { isSystem: true }] },
       { $set: dto },
       { new: true },
     );
@@ -38,9 +41,12 @@ export class CategoriesService {
   }
 
   async remove(userId: string, id: string) {
+    const userObjId = new Types.ObjectId(userId);
+    const catObjId = new Types.ObjectId(id);
+
     const result = await this.categoryModel.deleteOne({
-      _id: new Types.ObjectId(id),
-      userId: new Types.ObjectId(userId),
+      _id: catObjId,
+      $or: [{ userId: userObjId }, { isSystem: true }],
     });
     if (result.deletedCount === 0) throw new NotFoundException('Không tìm thấy danh mục hoặc không có quyền xóa');
     return { message: 'Đã xóa danh mục' };

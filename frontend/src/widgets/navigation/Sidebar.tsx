@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   LogOut,
   TrendingUp,
+  Tag,
 } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
@@ -20,6 +21,7 @@ const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Giao dịch', href: '/transactions', icon: Receipt },
   { name: 'Ví & Tài khoản', href: '/wallets', icon: Wallet },
+  { name: 'Danh mục', href: '/categories', icon: Tag },
   { name: 'Ngân sách', href: '/budgets', icon: PieChart },
   { name: 'Hóa đơn định kỳ', href: '/bills', icon: CalendarDays },
   { name: 'Mục tiêu tiết kiệm', href: '/savings', icon: Target },

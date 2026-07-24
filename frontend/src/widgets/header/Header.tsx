@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, Bell, Plus, User as UserIcon, LogOut, ChevronDown, Wallet, Target, BarChart3 } from 'lucide-react';
+import { Sun, Moon, Bell, Plus, User as UserIcon, LogOut, ChevronDown, Wallet, Target, BarChart3, Tag } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
 interface HeaderProps {
@@ -111,6 +111,15 @@ export const Header: React.FC<HeaderProps> = ({ title, onOpenQuickAdd }) => {
               >
                 <BarChart3 className="w-4 h-4 text-emerald-500" />
                 <span>Báo cáo & Thống kê</span>
+              </Link>
+
+              <Link
+                href="/categories"
+                onClick={() => setIsUserMenuOpen(false)}
+                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+              >
+                <Tag className="w-4 h-4 text-purple-500" />
+                <span>Danh mục thu / chi</span>
               </Link>
 
               <div className="border-t border-slate-100 dark:border-slate-800 my-1"></div>
