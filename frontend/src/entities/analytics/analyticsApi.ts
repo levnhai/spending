@@ -33,6 +33,13 @@ export interface TopCategoryItem extends PieChartItem {
   percentage: number;
 }
 
+export interface WeeklyChartItem {
+  day: string;
+  fullDate: string;
+  income: number;
+  expense: number;
+}
+
 export const analyticsApi = {
   getSummary: async (): Promise<DashboardSummary> => {
     const res = await api.get('/analytics/dashboard');
@@ -44,6 +51,10 @@ export const analyticsApi = {
   },
   getBarChart: async (year?: number): Promise<BarChartItem[]> => {
     const res = await api.get('/analytics/bar-chart', { params: { year } });
+    return res.data;
+  },
+  getWeeklyChart: async (): Promise<WeeklyChartItem[]> => {
+    const res = await api.get('/analytics/weekly-chart');
     return res.data;
   },
   getLineChart: async (month?: number, year?: number): Promise<LineChartItem[]> => {

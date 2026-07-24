@@ -13,6 +13,7 @@ import {
   BarChartItem,
   LineChartItem,
   TopCategoryItem,
+  WeeklyChartItem,
 } from "@/entities/analytics/analyticsApi";
 import {
   transactionApi,
@@ -25,6 +26,7 @@ export const DashboardPageView: React.FC = () => {
   const [barData, setBarData] = useState<BarChartItem[]>([]);
   const [lineData, setLineData] = useState<LineChartItem[]>([]);
   const [topCategories, setTopCategories] = useState<TopCategoryItem[]>([]);
+  const [weeklyData, setWeeklyData] = useState<WeeklyChartItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,13 +34,14 @@ export const DashboardPageView: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sumRes, pieRes, barRes, lineRes, topRes, txRes] =
+      const [sumRes, pieRes, barRes, lineRes, topRes, weeklyRes, txRes] =
         await Promise.all([
           analyticsApi.getSummary(),
           analyticsApi.getPieChart(),
           analyticsApi.getBarChart(),
           analyticsApi.getLineChart(),
           analyticsApi.getTopCategories(),
+          analyticsApi.getWeeklyChart(),
           transactionApi.getAll(),
         ]);
 
@@ -47,6 +50,7 @@ export const DashboardPageView: React.FC = () => {
       setBarData(barRes);
       setLineData(lineRes);
       setTopCategories(topRes);
+      setWeeklyData(weeklyRes);
       setTransactions(txRes);
     } catch (e) {
       console.error(e);
@@ -70,6 +74,7 @@ export const DashboardPageView: React.FC = () => {
           barData={barData}
           lineData={lineData}
           topCategories={topCategories}
+          weeklyData={weeklyData}
         />
         <TransactionListWidget
           transactions={transactions}

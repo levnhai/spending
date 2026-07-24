@@ -226,4 +226,61 @@ export class AnalyticsService {
       percentage: totalSpent > 0 ? Math.round((cat.value / totalSpent) * 100) : 0,
     }));
   }
+
+  async getWeeklyComparison(userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+    const now = new Date();
+
+    const currentDayOfWeek = now.getDay();
+    const distanceToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distanceToMonday, 0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6, 23, 59, 59, 999);
+
+    const result = await this.transactionModel.aggregate([
+      {
+        $match: {
+          userId: userObjId,
+          date: { $gte: startOfWeek, $lte: endOfWeek },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            day: { $dayOfMonth: '$date' },
+            type: '$type',
+          },
+          total: { $sum: '$amount' },
+        },
+      },
+    ]);
+
+    const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+    const weeklyData = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      const dateNum = d.getDate();
+      const fullDate = `${dateNum.toString().padStart(2, '0')}/${m.toString().padStart(2, '0')}`;
+
+      const inc = result.find(
+        (r) => r._id.year === y && r._id.month === m && r._id.day === dateNum && r._id.type === TransactionType.INCOME,
+      );
+      const exp = result.find(
+        (r) => r._id.year === y && r._id.month === m && r._id.day === dateNum && r._id.type === TransactionType.EXPENSE,
+      );
+
+      return {
+        day: dayLabels[i],
+        fullDate,
+        income: inc ? inc.total : 0,
+        expense: exp ? exp.total : 0,
+      };
+    });
+
+    return weeklyData;
+  }
 }

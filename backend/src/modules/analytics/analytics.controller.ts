@@ -46,4 +46,10 @@ export class AnalyticsController {
   getTopSpendingCategories(@Request() req: any, @Query('month') month?: number, @Query('year') year?: number) {
     return this.analyticsService.getTopSpendingCategories(req.user.userId, month, year);
   }
+
+  @Get('weekly-chart')
+  @ApiOperation({ summary: 'Dữ liệu biểu đồ so sánh Thu vs Chi theo tuần hiện tại' })
+  getWeeklyComparison(@Request() req: any) {
+    return this.analyticsService.getWeeklyComparison(req.user.userId);
+  }
 }

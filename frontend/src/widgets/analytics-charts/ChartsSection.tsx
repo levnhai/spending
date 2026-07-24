@@ -16,7 +16,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { PieChartItem, BarChartItem, LineChartItem, TopCategoryItem } from '@/entities/analytics/analyticsApi';
+import { PieChartItem, BarChartItem, LineChartItem, TopCategoryItem, WeeklyChartItem } from '@/entities/analytics/analyticsApi';
 import { formatVND } from '@/shared/lib/formatters';
 
 interface ChartsProps {
@@ -24,6 +24,7 @@ interface ChartsProps {
   barData: BarChartItem[];
   lineData: LineChartItem[];
   topCategories: TopCategoryItem[];
+  weeklyData?: WeeklyChartItem[];
 }
 
 const formatAxisVND = (v: number): string => {
@@ -43,11 +44,85 @@ const formatAxisVND = (v: number): string => {
   return `${v}đ`;
 };
 
-export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineData, topCategories }) => {
+export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineData, topCategories, weeklyData = [] }) => {
+  const [isMounted, setIsMounted] = React.useState(false);
   const COLORS = ['#F43F5E', '#F97316', '#EC4899', '#EAB308', '#6366F1', '#A855F7', '#06B6D4', '#14B8A6'];
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-12 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80 h-80 flex items-center justify-center text-slate-400 text-sm">
+          Đang tải biểu đồ...
+        </div>
+        <div className="lg:col-span-5 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80 h-72 flex items-center justify-center text-slate-400 text-sm">
+          Đang tải biểu đồ...
+        </div>
+        <div className="lg:col-span-7 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80 h-72 flex items-center justify-center text-slate-400 text-sm">
+          Đang tải biểu đồ...
+        </div>
+        <div className="lg:col-span-8 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80 h-72 flex items-center justify-center text-slate-400 text-sm">
+          Đang tải biểu đồ...
+        </div>
+        <div className="lg:col-span-4 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80 h-72 flex items-center justify-center text-slate-400 text-sm">
+          Đang tải biểu đồ...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Biểu đồ Cột: Thu & Chi Trong 1 Tuần */}
+      <div className="lg:col-span-12 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>📊</span> Thu & Chi Theo Ngày Trong Tuần
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              So sánh dòng tiền thu nhập và chi tiêu 7 ngày trong tuần hiện tại
+            </p>
+          </div>
+        </div>
+        <div className="h-72">
+          {weeklyData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+              Đang tải dữ liệu biểu đồ tuần...
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                <XAxis
+                  dataKey="day"
+                  stroke="#94a3b8"
+                  fontSize={12}
+                  tickFormatter={(val, index) => {
+                    const item = weeklyData[index];
+                    return item ? `${val} (${item.fullDate})` : val;
+                  }}
+                />
+                <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={formatAxisVND} />
+                <Tooltip
+                  formatter={(value: any) => formatVND(Number(value))}
+                  labelFormatter={(label, payload) => {
+                    const item = payload?.[0]?.payload;
+                    return item ? `${label} (${item.fullDate})` : label;
+                  }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                <Bar dataKey="income" name="Thu nhập" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="expense" name="Chi tiêu" fill="#F43F5E" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
       {/* Biểu đồ Tròn: Tỷ Lệ Chi Tiêu Danh Mục */}
       <div className="lg:col-span-5 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80">
         <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">
