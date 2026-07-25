@@ -15,6 +15,7 @@ import { SavingsGoalsModule } from './modules/savings-goals/savings-goals.module
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NotesModule } from './modules/notes/notes.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AnalyticsModule,
     ReportsModule,
     NotificationsModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
