@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CheckSquare, StickyNote, Tag, Calendar, AlertCircle } from 'lucide-react';
-import { NoteItem, NoteType, NoteColor, NotePriority, TaskStatus, CreateNoteInput } from '@/entities/note';
+import { X, CheckSquare, StickyNote, Tag, Calendar, AlertCircle, Plus, Trash2, ListChecks } from 'lucide-react';
+import { NoteItem, NoteType, NoteColor, NotePriority, TaskStatus, CreateNoteInput, SubTask } from '@/entities/note';
 
 interface NoteModalProps {
   isOpen: boolean;
@@ -36,6 +36,8 @@ export const NoteModal: React.FC<NoteModalProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [subtasks, setSubtasks] = useState<SubTask[]>([]);
+  const [subtaskInput, setSubtaskInput] = useState('');
   const [isPinned, setIsPinned] = useState(false);
 
   useEffect(() => {
@@ -49,6 +51,8 @@ export const NoteModal: React.FC<NoteModalProps> = ({
       setStatus(initialData.status || 'todo');
       setDueDate(initialData.dueDate ? initialData.dueDate.split('T')[0] : '');
       setTags(initialData.tags || []);
+      setSubtasks(initialData.subtasks || []);
+      setSubtaskInput('');
       setIsPinned(initialData.isPinned || false);
     } else {
       setType('note');
@@ -60,6 +64,8 @@ export const NoteModal: React.FC<NoteModalProps> = ({
       setStatus('todo');
       setDueDate('');
       setTags([]);
+      setSubtasks([]);
+      setSubtaskInput('');
       setIsPinned(false);
     }
   }, [initialData, isOpen]);
@@ -80,9 +86,53 @@ export const NoteModal: React.FC<NoteModalProps> = ({
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
+  const handleAddSubtask = (e?: React.FormEvent | React.KeyboardEvent) => {
+    if (e && 'key' in e && e.key !== 'Enter') return;
+    if (e) e.preventDefault();
+    if (!subtaskInput.trim()) return;
+    setSubtasks([
+      ...subtasks,
+      {
+        id: `st-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        title: subtaskInput.trim(),
+        completed: false,
+      },
+    ]);
+    setSubtaskInput('');
+  };
+
+  const handleToggleSubtaskInModal = (id: string) => {
+    setSubtasks(
+      subtasks.map((st) => (st.id === id ? { ...st, completed: !st.completed } : st))
+    );
+  };
+
+  const handleRemoveSubtask = (id: string) => {
+    setSubtasks(subtasks.filter((st) => st.id !== id));
+  };
+
+  const completedSubtasksCount = subtasks.filter((st) => st.completed).length;
+  const subtasksPercent =
+    subtasks.length > 0 ? Math.round((completedSubtasksCount / subtasks.length) * 100) : 0;
+
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    let finalSubtasks = type === 'task' ? [...subtasks] : [];
+    if (type === 'task' && finalSubtasks.length === 0 && content.trim()) {
+      const lines = content
+        .split('\n')
+        .map((l) => l.trim().replace(/^[-*•\d+\.]\s*/, ''))
+        .filter(Boolean);
+      if (lines.length > 0) {
+        finalSubtasks = lines.map((line, idx) => ({
+          id: `st-${Date.now()}-${idx}`,
+          title: line,
+          completed: false,
+        }));
+      }
+    }
 
     onSubmit({
       type,
@@ -95,6 +145,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
       status: type === 'task' ? status : undefined,
       dueDate: type === 'task' && dueDate ? dueDate : undefined,
       tags,
+      subtasks: finalSubtasks,
     });
     onClose();
   };
@@ -172,16 +223,100 @@ export const NoteModal: React.FC<NoteModalProps> = ({
           {/* Content */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Nội dung chi tiết / Checklist
+              Nội dung chi tiết
             </label>
             <textarea
-              rows={4}
+              rows={3}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Nhập nội dung ghi chú hoặc các bước công việc..."
+              placeholder="Nhập nội dung mô tả công việc..."
               className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm resize-none"
             />
           </div>
+
+          {/* Subtasks / Checklist (Chỉ dành cho Task) */}
+          {type === 'task' && (
+            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <ListChecks className="w-4 h-4 text-emerald-500" />
+                  Nhiệm vụ nhỏ (Checklist)
+                </label>
+                {subtasks.length > 0 && (
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                    {completedSubtasksCount}/{subtasks.length} ({subtasksPercent}%)
+                  </span>
+                )}
+              </div>
+
+              {/* Progress bar in modal */}
+              {subtasks.length > 0 && (
+                <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
+                    style={{ width: `${subtasksPercent}%` }}
+                  />
+                </div>
+              )}
+
+              {/* List of subtasks */}
+              {subtasks.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {subtasks.map((st) => (
+                    <div
+                      key={st.id}
+                      className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-sm shadow-sm"
+                    >
+                      <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={st.completed}
+                          onChange={() => handleToggleSubtaskInModal(st.id)}
+                          className="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span
+                          className={`truncate ${
+                            st.completed
+                              ? 'line-through text-slate-400 dark:text-slate-500'
+                              : 'text-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          {st.title}
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubtask(st.id)}
+                        className="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Subtask Input */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={subtaskInput}
+                  onChange={(e) => setSubtaskInput(e.target.value)}
+                  onKeyDown={handleAddSubtask}
+                  placeholder="Nhập bước công việc nhỏ và ấn Enter..."
+                  className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSubtask}
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-500 text-white font-medium text-xs hover:bg-emerald-600 transition-colors shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Thêm
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Category & Priority */}
           <div className="grid grid-cols-2 gap-4">

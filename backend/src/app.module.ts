@@ -16,6 +16,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NotesModule } from './modules/notes/notes.module';
+import { DebtsModule } from './modules/debts/debts.module';
+import { MonthlyPlansModule } from './modules/monthly-plans/monthly-plans.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { NotesModule } from './modules/notes/notes.module';
     ReportsModule,
     NotificationsModule,
     NotesModule,
+    DebtsModule,
+    MonthlyPlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],

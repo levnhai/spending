@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Tag,
   CheckSquare,
+  Calculator,
 } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
@@ -23,6 +24,7 @@ const navItems = [
   { name: 'Giao dịch', href: '/transactions', icon: Receipt },
   { name: 'Ví & Tài khoản', href: '/wallets', icon: Wallet },
   { name: 'Danh mục', href: '/categories', icon: Tag },
+  { name: 'Kế hoạch tháng', href: '/monthly-plan', icon: Calculator },
   { name: 'Ngân sách', href: '/budgets', icon: PieChart },
   { name: 'Hóa đơn định kỳ', href: '/bills', icon: CalendarDays },
   { name: 'Mục tiêu tiết kiệm', href: '/savings', icon: Target },

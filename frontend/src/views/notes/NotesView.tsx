@@ -8,7 +8,7 @@ import { NoteCard } from '@/entities/note';
 import { NoteFilters, NoteModal, TaskProgressChart } from '@/features/note-management';
 
 export const NotesView: React.FC = () => {
-  const { notes, fetchNotes, addNote, updateNote, deleteNote, togglePin, updateTaskStatus } = useNoteStore();
+  const { notes, fetchNotes, addNote, updateNote, deleteNote, togglePin, updateTaskStatus, toggleSubtask } = useNoteStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'note' | 'task'>('all');
@@ -53,7 +53,8 @@ export const NotesView: React.FC = () => {
         const matchContent = note.content.toLowerCase().includes(q);
         const matchCategory = note.category.toLowerCase().includes(q);
         const matchTags = note.tags.some((t) => t.toLowerCase().includes(q));
-        return matchTitle || matchContent || matchCategory || matchTags;
+        const matchSubtasks = note.subtasks?.some((st) => st.title.toLowerCase().includes(q));
+        return matchTitle || matchContent || matchCategory || matchTags || matchSubtasks;
       }
 
       return true;
@@ -193,6 +194,7 @@ export const NotesView: React.FC = () => {
                   onDelete={deleteNote}
                   onTogglePin={togglePin}
                   onStatusChange={updateTaskStatus}
+                  onToggleSubtask={toggleSubtask}
                 />
               ))}
             </div>
@@ -243,6 +245,7 @@ export const NotesView: React.FC = () => {
                   onDelete={deleteNote}
                   onTogglePin={togglePin}
                   onStatusChange={updateTaskStatus}
+                  onToggleSubtask={toggleSubtask}
                 />
               ))}
             </div>

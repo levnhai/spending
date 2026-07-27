@@ -53,3 +53,15 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
 }
+
+/* Custom Select & Options Dark/Light styling */
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 8px 12px;
+}
+
+.dark select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}

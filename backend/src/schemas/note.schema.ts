@@ -40,6 +40,12 @@ export class Note {
 
   @Prop({ type: [String], default: [] })
   tags: string[];
+
+  @Prop({
+    type: [{ id: String, title: String, completed: { type: Boolean, default: false } }],
+    default: [],
+  })
+  subtasks?: Array<{ id: string; title: string; completed: boolean }>;
 }
 
 export const NoteSchema = SchemaFactory.createForClass(Note);

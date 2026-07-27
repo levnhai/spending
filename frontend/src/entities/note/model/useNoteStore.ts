@@ -2,85 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { NoteItem, CreateNoteInput, UpdateNoteInput, TaskStatus } from './types';
 import { noteApi } from '../noteApi';
-
-const now = new Date();
-const todayStr = now.toISOString().split('T')[0];
-
-const INITIAL_FALLBACK_NOTES: NoteItem[] = [
-  {
-    id: 'note-1',
-    type: 'note',
-    title: 'Ghi chú tài khoản & Dịch vụ cá nhân',
-    content: '- Spotify Family: Hạn gia hạn ngày 15 hàng tháng\n- Tiền thuê nhà: Chuyển trước ngày 05 hàng tháng\n- Bảo hiểm sức khỏe: Cần gửi hồ sơ hoàn ứng tháng này',
-    category: 'Cá nhân',
-    color: 'emerald',
-    isPinned: true,
-    priority: 'high',
-    tags: ['Tài khoản', 'Định kỳ'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-1',
-    type: 'task',
-    title: 'Nộp báo cáo tài chính quý 3',
-    content: 'Tổng hợp số liệu chi tiêu các danh mục và chuẩn bị tài liệu họp ban điều hành.',
-    category: 'Công việc',
-    color: 'blue',
-    isPinned: true,
-    priority: 'high',
-    status: 'in_progress',
-    dueDate: todayStr,
-    tags: ['Báo cáo', 'Tài chính'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-2',
-    type: 'task',
-    title: 'Xây dựng tính năng theo dõi danh mục tài sản',
-    content: 'Tích hợp thêm tính năng theo dõi cổ phiếu, vàng và tiết kiệm tích lũy vào FinFlow.',
-    category: 'Dự án',
-    color: 'amber',
-    isPinned: false,
-    priority: 'medium',
-    status: 'todo',
-    dueDate: '2026-07-28',
-    tags: ['FinFlow', 'Dev'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-3',
-    type: 'task',
-    title: 'Thanh toán tiền điện thoại & Internet',
-    content: 'Hạn thanh toán trước ngày 26 hàng tháng để không bị gián đoạn dịch vụ.',
-    category: 'Cá nhân',
-    color: 'rose',
-    isPinned: false,
-    priority: 'medium',
-    status: 'completed',
-    dueDate: todayStr,
-    completedAt: new Date().toISOString(),
-    tags: ['Hóa đơn', 'Gia đình'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'note-2',
-    type: 'note',
-    title: 'Danh sách sách cần đọc Q3/2026',
-    content: '1. The Psychology of Money - Morgan Housel\n2. Atomic Habits - James Clear\n3. Designing Data-Intensive Applications',
-    category: 'Cá nhân',
-    color: 'purple',
-    isPinned: false,
-    priority: 'low',
-    tags: ['Sách', 'Phát triển bản thân'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
 interface NoteState {
   notes: NoteItem[];
   isLoading: boolean;
@@ -91,12 +12,13 @@ interface NoteState {
   deleteNote: (id: string) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
   updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>;
+  toggleSubtask: (noteId: string, subtaskId: string) => Promise<void>;
 }
 
 export const useNoteStore = create<NoteState>()(
   persist(
     (set, get) => ({
-      notes: INITIAL_FALLBACK_NOTES,
+      notes: [],
       isLoading: false,
       error: null,
 
@@ -104,14 +26,10 @@ export const useNoteStore = create<NoteState>()(
         set({ isLoading: true, error: null });
         try {
           const data = await noteApi.getAll();
-          if (data && data.length > 0) {
-            set({ notes: data, isLoading: false });
-          } else {
-            set({ isLoading: false });
-          }
+          set({ notes: data || [], isLoading: false });
         } catch (e: any) {
-          console.warn('Không thể kết nối API Backend, dùng cache local:', e?.message);
-          set({ isLoading: false });
+          console.warn('Không thể tải ghi chú/task từ API:', e?.message);
+          set({ isLoading: false, error: e?.message || 'Lỗi kết nối server' });
         }
       },
 
@@ -197,9 +115,71 @@ export const useNoteStore = create<NoteState>()(
           console.warn('Cập nhật trạng thái offline:', e);
         }
       },
+
+      toggleSubtask: async (noteId, subtaskId) => {
+        const targetNote = get().notes.find((n) => n.id === noteId);
+        if (!targetNote) return;
+
+        let currentSubtasks = targetNote.subtasks && targetNote.subtasks.length > 0 ? [...targetNote.subtasks] : [];
+
+        // Nếu subtasks đang rỗng nhưng content có nhiều dòng, tự động tách content thành subtasks
+        if (currentSubtasks.length === 0 && targetNote.content) {
+          const lines = targetNote.content
+            .split('\n')
+            .map((l) => l.trim().replace(/^[-*•\d+\.]\s*/, ''))
+            .filter(Boolean);
+          if (lines.length > 0) {
+            currentSubtasks = lines.map((l, idx) => ({
+              id: `auto-${idx}`,
+              title: l,
+              completed: false,
+            }));
+          }
+        }
+
+        const updatedSubtasks = currentSubtasks.map((st, index) => {
+          if (st.id === subtaskId || `auto-${index}` === subtaskId) {
+            return { ...st, completed: !st.completed };
+          }
+          return st;
+        });
+
+        const total = updatedSubtasks.length;
+        const completedCount = updatedSubtasks.filter((st) => st.completed).length;
+
+        let newStatus = targetNote.status;
+        if (total > 0 && completedCount === total) {
+          newStatus = 'completed';
+        } else if (completedCount > 0) {
+          if (newStatus === 'todo' || newStatus === 'completed') {
+            newStatus = 'in_progress';
+          }
+        } else if (completedCount === 0 && newStatus === 'in_progress') {
+          newStatus = 'todo';
+        }
+
+        set((state) => ({
+          notes: state.notes.map((n) =>
+            n.id === noteId
+              ? {
+                  ...n,
+                  subtasks: updatedSubtasks,
+                  status: newStatus,
+                  updatedAt: new Date().toISOString(),
+                }
+              : n
+          ),
+        }));
+
+        try {
+          await noteApi.update(noteId, { subtasks: updatedSubtasks, status: newStatus });
+        } catch (e) {
+          console.warn('Toggle subtask offline:', e);
+        }
+      },
     }),
     {
-      name: 'finflow-notes-storage',
+      name: 'finflow-notes-storage-v2',
       partialize: (state) => ({ notes: state.notes }),
     }
   )

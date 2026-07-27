@@ -6,6 +6,7 @@ import { walletApi, Wallet } from '@/entities/wallet/walletApi';
 import { categoryApi, Category } from '@/entities/category/categoryApi';
 import { transactionApi } from '@/entities/transaction/transactionApi';
 import { IconMapper } from '@/shared/icons/IconMapper';
+import { formatNumberWithSpaces, parseFormattedNumber } from '@/shared/lib/formatters';
 
 interface ModalProps {
   isOpen: boolean;
@@ -51,7 +52,8 @@ export const AddTransactionModal: React.FC<ModalProps> = ({ isOpen, onClose, onS
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0) return alert('Vui lòng nhập số tiền hợp lệ');
+    const numAmount = parseFormattedNumber(amount);
+    if (!numAmount || numAmount <= 0) return alert('Vui lòng nhập số tiền hợp lệ');
     if (!walletId) return alert('Vui lòng chọn ví');
 
     setLoading(true);
@@ -60,7 +62,7 @@ export const AddTransactionModal: React.FC<ModalProps> = ({ isOpen, onClose, onS
         walletId,
         toWalletId: type === 'transfer' ? toWalletId : undefined,
         categoryId: type !== 'transfer' ? categoryId : undefined,
-        amount: Number(amount),
+        amount: numAmount,
         type,
         date,
         note,
@@ -138,10 +140,11 @@ export const AddTransactionModal: React.FC<ModalProps> = ({ isOpen, onClose, onS
               Số tiền (VNĐ)
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
+              onChange={(e) => setAmount(formatNumberWithSpaces(e.target.value))}
+              placeholder="VD: 7 400 000"
               required
               className="w-full text-2xl font-bold px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />

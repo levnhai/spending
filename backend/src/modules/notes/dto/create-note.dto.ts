@@ -45,4 +45,8 @@ export class CreateNoteDto {
   @IsString({ each: true })
   @IsOptional()
   tags?: string[];
+
+  @IsArray()
+  @IsOptional()
+  subtasks?: Array<{ id?: string; title: string; completed?: boolean }>;
 }

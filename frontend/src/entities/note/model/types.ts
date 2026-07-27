@@ -6,6 +6,12 @@ export type NotePriority = 'low' | 'medium' | 'high';
 
 export type NoteColor = 'emerald' | 'blue' | 'amber' | 'purple' | 'rose' | 'slate';
 
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface NoteItem {
   id: string;
   type: NoteType;
@@ -19,6 +25,7 @@ export interface NoteItem {
   dueDate?: string;     // Ngày hạn hoàn thành (YYYY-MM-DD)
   completedAt?: string; // Ngày giờ thực tế hoàn thành
   tags: string[];
+  subtasks?: SubTask[]; // Danh sách các nhiệm vụ nhỏ chia theo checklist
   createdAt: string;
   updatedAt: string;
 }

@@ -10,6 +10,7 @@ interface NoteCardProps {
   onDelete: (id: string) => void;
   onTogglePin: (id: string) => void;
   onStatusChange?: (id: string, status: TaskStatus) => void;
+  onToggleSubtask?: (noteId: string, subtaskId: string) => void;
 }
 
 const colorMap: Record<NoteColor, { border: string; bg: string; badge: string; accent: string }> = {
@@ -58,16 +59,49 @@ const statusLabels: Record<TaskStatus, { label: string; style: string }> = {
   cancelled: { label: 'Đã hủy', style: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300' },
 };
 
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export const NoteCard: React.FC<NoteCardProps> = ({
   note,
   onEdit,
   onDelete,
   onTogglePin,
   onStatusChange,
+  onToggleSubtask,
 }) => {
   const styles = colorMap[note.color] || colorMap.slate;
   const isTask = note.type === 'task';
   const isCompleted = note.status === 'completed';
+
+  const effectiveSubtasks = React.useMemo(() => {
+    if (note.subtasks && note.subtasks.length > 0) return note.subtasks;
+    if (isTask && note.content) {
+      const lines = note.content
+        .split('\n')
+        .map((l) => l.trim().replace(/^[-*•\d+\.]\s*/, ''))
+        .filter(Boolean);
+      if (lines.length > 0) {
+        return lines.map((line, idx) => ({
+          id: `auto-${idx}`,
+          title: line,
+          completed: false,
+        }));
+      }
+    }
+    return [];
+  }, [note.subtasks, isTask, note.content]);
+
+  const totalSubtasks = effectiveSubtasks.length;
+  const completedSubtasks = effectiveSubtasks.filter((st) => st.completed).length;
+  const subtasksPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
   const isOverdue = React.useMemo(() => {
     if (!note.dueDate || isCompleted) return false;
@@ -168,10 +202,65 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           </h3>
         </div>
 
-        {/* Content */}
-        <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line line-clamp-5 mb-4 pl-0.5">
-          {note.content}
-        </div>
+        {/* Content (chỉ hiện khi note có content và đã có subtasks mảng riêng) */}
+        {note.content && note.subtasks && note.subtasks.length > 0 && (
+          <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line line-clamp-4 mb-3 pl-0.5">
+            {note.content}
+          </div>
+        )}
+
+        {/* Subtasks Checklist & Progress Bar Section */}
+        {isTask && totalSubtasks > 0 && (
+          <div className="my-3 p-3 rounded-xl bg-slate-900/5 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <span>Tiến độ công việc</span>
+              <span className={subtasksPercent === 100 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-blue-600 dark:text-blue-400'}>
+                {completedSubtasks}/{totalSubtasks} ({subtasksPercent}%)
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  subtasksPercent === 100
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                    : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                }`}
+                style={{ width: `${subtasksPercent}%` }}
+              />
+            </div>
+
+            {/* Subtasks List */}
+            <div className="space-y-1.5 pt-1 max-h-36 overflow-y-auto">
+              {effectiveSubtasks.map((st) => (
+                <div key={st.id} className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => onToggleSubtask && onToggleSubtask(note.id, st.id)}
+                    className="text-slate-400 hover:text-emerald-500 transition-colors shrink-0"
+                  >
+                    {st.completed ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-500/20" />
+                    ) : (
+                      <Square className="w-4 h-4 hover:scale-105 transition-transform" />
+                    )}
+                  </button>
+                  <span
+                    className={`truncate cursor-pointer ${
+                      st.completed
+                        ? 'line-through text-slate-400 dark:text-slate-500'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                    onClick={() => onToggleSubtask && onToggleSubtask(note.id, st.id)}
+                  >
+                    {st.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer info */}
@@ -209,7 +298,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               >
                 <CalendarCheck className="w-3.5 h-3.5" />
                 {isOverdue ? 'Quá hạn: ' : 'Hạn: '}
-                {new Date(note.dueDate).toLocaleDateString('vi-VN')}
+                {formatDate(note.dueDate)}
               </span>
             )}
           </div>
@@ -227,7 +316,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           </div>
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {new Date(note.updatedAt).toLocaleDateString('vi-VN')}
+            {formatDate(note.updatedAt)}
           </span>
         </div>
       </div>
