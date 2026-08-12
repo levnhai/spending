@@ -135,36 +135,6 @@ export const MonthlyPlanSummaryCard: React.FC<MonthlyPlanSummaryCardProps> = ({ 
               style={{ width: `${Math.min(100, summary.spentPercentage)}%` }}
             />
           </div>
-
-          {/* Over-Pace / Over-Budget Recommendation Advice */}
-          {(summary.isOverPace || summary.remainingDiscretionary <= 0) && (
-            <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-100 space-y-3 mt-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <span className="font-bold text-xs sm:text-sm flex items-center gap-2 text-amber-300">
-                  <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
-                  Đề Xuất Điều Chỉnh Chi Tiêu ({remainingDays} Ngày Còn Lại)
-                </span>
-                <button
-                  onClick={onEditClick}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center gap-1 shrink-0"
-                >
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>Bổ Sung Ngân Sách</span>
-                </button>
-              </div>
-              <p className="text-xs text-amber-200/90 leading-relaxed">
-                {summary.remainingDiscretionary <= 0 ? (
-                  <>
-                    🔴 Bạn đã tiêu vượt ngân sách tự do <b><AmountDisplay amount={Math.abs(summary.remainingDiscretionary)} showEye={false} className="text-rose-400 font-bold" /></b>! Hãy bấm nút <b>"Bổ Sung Ngân Sách"</b> để tăng thêm thu nhập dự kiến hoặc thắt chặt chi phí cố định/tiết kiệm.
-                  </>
-                ) : (
-                  <>
-                    📌 Đề xuất ban đầu là <b><AmountDisplay amount={summary.dailyAllowance} showEye={false} className="font-bold text-white" />/ngày</b>. Do đã chi tiêu hết <b>{summary.spentPercentage}% ngân sách</b> (trải qua {summary.daysPassedPercentage}% thời gian), trong <b>{remainingDays} ngày còn lại</b> bạn chỉ được tiêu tối đa <b><AmountDisplay amount={adjustedDailyAllowance} showEye={false} className="text-amber-300 font-bold" />/ngày</b> để không bị vỡ kế hoạch tài chính!
-                  </>
-                )}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 

@@ -25,7 +25,7 @@ export const useUserStore = create<UserState>((set) => ({
   user: null,
   token: null,
   theme: 'dark',
-  showAmount: true, // Mặc định hiển thị số tiền
+  showAmount: false, // Mặc định ẨN số tiền (chỉ hiển thị khi bấm icon con mắt)
 
   setAuth: (user, token) => {
     if (typeof window !== 'undefined') {
@@ -74,7 +74,7 @@ export const useUserStore = create<UserState>((set) => ({
       const userStr = localStorage.getItem('finflow_user');
       const savedTheme = (localStorage.getItem('finflow_theme') as 'dark' | 'light') || 'dark';
       const savedShowAmount = localStorage.getItem('finflow_show_amount');
-      const showAmount = savedShowAmount !== null ? savedShowAmount === 'true' : true;
+      const showAmount = savedShowAmount !== null ? savedShowAmount === 'true' : false;
 
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
