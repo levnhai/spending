@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { formatVND } from '@/shared/lib/formatters';
+import { useUserStore } from '@/entities/user/useUserStore';
 
 interface AmountDisplayProps {
   amount: number;
   prefix?: string;
   className?: string;
   iconClassName?: string;
-  defaultVisible?: boolean;
+  showEye?: boolean;
 }
 
 export const AmountDisplay: React.FC<AmountDisplayProps> = ({
@@ -17,27 +18,32 @@ export const AmountDisplay: React.FC<AmountDisplayProps> = ({
   prefix = '',
   className = '',
   iconClassName = 'w-3.5 h-3.5',
-  defaultVisible = false,
+  showEye = true,
 }) => {
-  const [visible, setVisible] = useState(defaultVisible);
+  const globalShowAmount = useUserStore((s) => s.showAmount);
+  const [localVisible, setLocalVisible] = useState<boolean | null>(null);
+
+  const isVisible = localVisible !== null ? localVisible : globalShowAmount;
 
   return (
     <span className="inline-flex items-center gap-1.5 max-w-full">
       <span className={className}>
         {prefix}
-        {visible ? formatVND(amount) : '••••••••'}
+        {isVisible ? formatVND(amount) : '••••••••'}
       </span>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setVisible(!visible);
-        }}
-        className="p-1 text-slate-400 hover:text-emerald-500 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors inline-flex items-center justify-center shrink-0"
-        title={visible ? 'Ẩn số tiền này' : 'Hiện số tiền này'}
-      >
-        {visible ? <Eye className={iconClassName} /> : <EyeOff className={iconClassName} />}
-      </button>
+      {showEye && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setLocalVisible(!isVisible);
+          }}
+          className="p-1 text-slate-400 hover:text-emerald-500 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors inline-flex items-center justify-center shrink-0"
+          title={isVisible ? 'Ẩn số tiền này' : 'Hiện số tiền này'}
+        >
+          {isVisible ? <Eye className={iconClassName} /> : <EyeOff className={iconClassName} />}
+        </button>
+      )}
     </span>
   );
 };

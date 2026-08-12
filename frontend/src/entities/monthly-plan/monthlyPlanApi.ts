@@ -64,6 +64,8 @@ export interface PlanSummaryData {
     daysPassedPercentage: number;
     spentPercentage: number;
     isOverPace: boolean;
+    remainingDays?: number;
+    adjustedDailyAllowance?: number;
   };
 }
 

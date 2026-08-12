@@ -33,7 +33,14 @@ export const MonthlyPlanSummaryCard: React.FC<MonthlyPlanSummaryCardProps> = ({ 
     );
   }
 
-  const { summary, month, year, totalDays, currentDay } = data;
+  const { summary, month, year, totalDays = 30, currentDay = 1 } = data;
+
+  const remainingDays = summary.remainingDays ?? Math.max(1, totalDays - currentDay + 1);
+  const adjustedDailyAllowance = summary.adjustedDailyAllowance ?? (
+    summary.remainingDiscretionary > 0
+      ? Math.round(summary.remainingDiscretionary / remainingDays)
+      : 0
+  );
 
   return (
     <div className="space-y-6">
@@ -55,9 +62,9 @@ export const MonthlyPlanSummaryCard: React.FC<MonthlyPlanSummaryCardProps> = ({ 
 
           <button
             onClick={onEditClick}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-md border border-white/10 transition-all"
+            className="px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-1.5"
           >
-            Chỉnh Sửa Kế Hoạch
+            <span>Bổ Sung & Chỉnh Sửa Kế Hoạch</span>
           </button>
         </div>
 
@@ -79,18 +86,32 @@ export const MonthlyPlanSummaryCard: React.FC<MonthlyPlanSummaryCardProps> = ({ 
           </div>
         </div>
 
-        {/* Daily & Weekly Allowance Cards */}
+        {/* Daily Allowance Comparison Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 relative z-10">
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
-            <span className="text-xs text-indigo-200 font-medium block">Hạn mức gợi ý mỗi ngày</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-indigo-200 font-medium block">Hạn mức ban đầu mỗi ngày</span>
+              <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md">Đề xuất ban đầu</span>
+            </div>
             <AmountDisplay amount={summary.dailyAllowance} className="text-xl font-bold text-white" />
-            <span className="text-[11px] text-indigo-300/80 block">= Ngân sách tự do / {totalDays} ngày</span>
+            <span className="text-[11px] text-indigo-300/80 block">= Ngân sách ban đầu / {totalDays} ngày</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
-            <span className="text-xs text-indigo-200 font-medium block">Hạn mức gợi ý mỗi tuần</span>
-            <AmountDisplay amount={summary.weeklyAllowance} className="text-xl font-bold text-white" />
-            <span className="text-[11px] text-indigo-300/80 block">= Ngân sách tự do / 4 tuần</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-amber-200 font-medium block">Hạn mức điều chỉnh ({remainingDays} ngày còn lại)</span>
+              <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md">Thực tế điều chỉnh</span>
+            </div>
+            {summary.remainingDiscretionary > 0 ? (
+              <AmountDisplay amount={adjustedDailyAllowance} className="text-xl font-bold text-amber-300" />
+            ) : (
+              <span className="text-xl font-bold text-rose-400 block">0đ (Đã hết hạn mức)</span>
+            )}
+            <span className="text-[11px] text-amber-200/80 block">
+              {summary.remainingDiscretionary > 0
+                ? `= Tiền còn lại / ${remainingDays} ngày còn lại`
+                : 'Đã chi tiêu quá ngân sách ban đầu!'}
+            </span>
           </div>
         </div>
 
@@ -115,10 +136,33 @@ export const MonthlyPlanSummaryCard: React.FC<MonthlyPlanSummaryCardProps> = ({ 
             />
           </div>
 
-          {summary.isOverPace && (
-            <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 mt-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-              <span>Cảnh báo: Bạn đang tiêu tiền nhanh hơn tiến độ thời gian của tháng! Hãy tiết chế lại chi tiêu những ngày tới.</span>
+          {/* Over-Pace / Over-Budget Recommendation Advice */}
+          {(summary.isOverPace || summary.remainingDiscretionary <= 0) && (
+            <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-100 space-y-3 mt-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <span className="font-bold text-xs sm:text-sm flex items-center gap-2 text-amber-300">
+                  <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+                  Đề Xuất Điều Chỉnh Chi Tiêu ({remainingDays} Ngày Còn Lại)
+                </span>
+                <button
+                  onClick={onEditClick}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center gap-1 shrink-0"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>Bổ Sung Ngân Sách</span>
+                </button>
+              </div>
+              <p className="text-xs text-amber-200/90 leading-relaxed">
+                {summary.remainingDiscretionary <= 0 ? (
+                  <>
+                    🔴 Bạn đã tiêu vượt ngân sách tự do <b><AmountDisplay amount={Math.abs(summary.remainingDiscretionary)} showEye={false} className="text-rose-400 font-bold" /></b>! Hãy bấm nút <b>"Bổ Sung Ngân Sách"</b> để tăng thêm thu nhập dự kiến hoặc thắt chặt chi phí cố định/tiết kiệm.
+                  </>
+                ) : (
+                  <>
+                    📌 Đề xuất ban đầu là <b><AmountDisplay amount={summary.dailyAllowance} showEye={false} className="font-bold text-white" />/ngày</b>. Do đã chi tiêu hết <b>{summary.spentPercentage}% ngân sách</b> (trải qua {summary.daysPassedPercentage}% thời gian), trong <b>{remainingDays} ngày còn lại</b> bạn chỉ được tiêu tối đa <b><AmountDisplay amount={adjustedDailyAllowance} showEye={false} className="text-amber-300 font-bold" />/ngày</b> để không bị vỡ kế hoạch tài chính!
+                  </>
+                )}
+              </p>
             </div>
           )}
         </div>

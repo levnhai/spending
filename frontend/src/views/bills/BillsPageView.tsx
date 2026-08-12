@@ -36,8 +36,9 @@ export const BillsPageView: React.FC = () => {
   useEffect(() => {
     fetchBills();
     walletApi.getAll().then((ws) => {
-      setWallets(ws);
-      if (ws.length > 0) setWalletId(ws[0]._id);
+      const paymentWallets = ws.filter((w) => w.type !== 'savings' && !w.isExcludedFromTotal);
+      setWallets(paymentWallets);
+      if (paymentWallets.length > 0) setWalletId(paymentWallets[0]._id);
     });
     categoryApi.getAll('expense').then((cs) => {
       setCategories(cs);

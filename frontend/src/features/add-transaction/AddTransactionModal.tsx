@@ -30,10 +30,11 @@ export const AddTransactionModal: React.FC<ModalProps> = ({ isOpen, onClose, onS
   useEffect(() => {
     if (isOpen) {
       walletApi.getAll().then((data) => {
-        setWallets(data);
-        if (data.length > 0) {
-          setWalletId(data[0]._id);
-          if (data.length > 1) setToWalletId(data[1]._id);
+        const paymentWallets = data.filter((w) => w.type !== 'savings' && !w.isExcludedFromTotal);
+        setWallets(paymentWallets);
+        if (paymentWallets.length > 0) {
+          setWalletId(paymentWallets[0]._id);
+          if (paymentWallets.length > 1) setToWalletId(paymentWallets[1]._id);
         }
       });
     }
@@ -161,14 +162,11 @@ export const AddTransactionModal: React.FC<ModalProps> = ({ isOpen, onClose, onS
                 onChange={(e) => setWalletId(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none"
               >
-                {wallets.map((w) => {
-                  const isSavings = w.type === 'savings' || w.isExcludedFromTotal;
-                  return (
-                    <option key={w._id} value={w._id}>
-                      {isSavings ? `[Tiết kiệm] ${w.name}` : w.name} ({w.currentBalance.toLocaleString()}đ)
-                    </option>
-                  );
-                })}
+                {wallets.map((w) => (
+                  <option key={w._id} value={w._id}>
+                    {w.name} ({w.currentBalance.toLocaleString()}đ)
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -184,14 +182,11 @@ export const AddTransactionModal: React.FC<ModalProps> = ({ isOpen, onClose, onS
                 >
                   {wallets
                     .filter((w) => w._id !== walletId)
-                    .map((w) => {
-                      const isSavings = w.type === 'savings' || w.isExcludedFromTotal;
-                      return (
-                        <option key={w._id} value={w._id}>
-                          {isSavings ? `[Tiết kiệm] ${w.name}` : w.name} ({w.currentBalance.toLocaleString()}đ)
-                        </option>
-                      );
-                    })}
+                    .map((w) => (
+                      <option key={w._id} value={w._id}>
+                        {w.name} ({w.currentBalance.toLocaleString()}đ)
+                      </option>
+                    ))}
                 </select>
               </div>
             ) : (

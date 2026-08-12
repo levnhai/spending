@@ -70,6 +70,12 @@ export class MonthlyPlansService {
     const daysPassedPercentage = Math.round((currentDay / totalDays) * 100);
     const spentPercentage = discretionaryBudget > 0 ? Math.round((actualExpense / discretionaryBudget) * 100) : 0;
 
+    const remainingDays = Math.max(1, totalDays - currentDay + 1);
+    const remainingDiscretionary = discretionaryBudget - actualExpense;
+    const adjustedDailyAllowance = remainingDiscretionary > 0
+      ? Math.round(remainingDiscretionary / remainingDays)
+      : 0;
+
     return {
       hasPlan: true,
       plan,
@@ -87,10 +93,12 @@ export class MonthlyPlansService {
         weeklyAllowance,
         actualIncome,
         actualExpense,
-        remainingDiscretionary: discretionaryBudget - actualExpense,
+        remainingDiscretionary,
         daysPassedPercentage,
         spentPercentage,
         isOverPace: spentPercentage > daysPassedPercentage,
+        remainingDays,
+        adjustedDailyAllowance,
       },
     };
   }
