@@ -28,6 +28,9 @@ export class SavingsGoal {
 
   @Prop({ default: false })
   isCompleted: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'Wallet', default: null })
+  walletId: Types.ObjectId | null;
 }
 
 export const SavingsGoalSchema = SchemaFactory.createForClass(SavingsGoal);

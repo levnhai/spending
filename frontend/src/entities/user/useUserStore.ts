@@ -25,7 +25,7 @@ export const useUserStore = create<UserState>((set) => ({
   user: null,
   token: null,
   theme: 'dark',
-  showAmount: false, // Mặc định là HIDE (ẩn tiền)
+  showAmount: true, // Mặc định hiển thị số tiền
 
   setAuth: (user, token) => {
     if (typeof window !== 'undefined') {
@@ -47,6 +47,7 @@ export const useUserStore = create<UserState>((set) => ({
     set((state) => {
       const newTheme = state.theme === 'dark' ? 'light' : 'dark';
       if (typeof window !== 'undefined') {
+        localStorage.setItem('finflow_theme', newTheme);
         if (newTheme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
@@ -58,7 +59,13 @@ export const useUserStore = create<UserState>((set) => ({
   },
 
   toggleShowAmount: () => {
-    set((state) => ({ showAmount: !state.showAmount }));
+    set((state) => {
+      const nextShow = !state.showAmount;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('finflow_show_amount', String(nextShow));
+      }
+      return { showAmount: nextShow };
+    });
   },
 
   initAuth: () => {
@@ -66,12 +73,16 @@ export const useUserStore = create<UserState>((set) => ({
       const token = localStorage.getItem('finflow_token');
       const userStr = localStorage.getItem('finflow_user');
       const savedTheme = (localStorage.getItem('finflow_theme') as 'dark' | 'light') || 'dark';
+      const savedShowAmount = localStorage.getItem('finflow_show_amount');
+      const showAmount = savedShowAmount !== null ? savedShowAmount === 'true' : true;
 
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
+
+      set({ showAmount });
 
       if (token && userStr) {
         try {

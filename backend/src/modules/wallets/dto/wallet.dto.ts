@@ -25,6 +25,11 @@ export class CreateWalletDto {
   @IsOptional()
   @IsString()
   icon?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isExcludedFromTotal?: boolean;
 }
 
 export class UpdateWalletDto {
@@ -52,4 +57,9 @@ export class UpdateWalletDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isExcludedFromTotal?: boolean;
 }

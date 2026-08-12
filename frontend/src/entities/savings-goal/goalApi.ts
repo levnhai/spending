@@ -10,6 +10,7 @@ export interface SavingsGoal {
   icon?: string;
   color?: string;
   isCompleted: boolean;
+  walletId?: string;
 }
 
 export const goalApi = {
@@ -28,8 +29,12 @@ export const goalApi = {
     const res = await api.post('/savings-goals', data);
     return res.data;
   },
-  deposit: async (id: string, amount: number): Promise<SavingsGoal> => {
-    const res = await api.put(`/savings-goals/${id}/deposit`, { amount });
+  deposit: async (
+    id: string,
+    payload: number | { amount: number; walletId?: string; type?: 'deposit' | 'withdraw'; note?: string },
+  ): Promise<SavingsGoal> => {
+    const body = typeof payload === 'number' ? { amount: payload } : payload;
+    const res = await api.put(`/savings-goals/${id}/deposit`, body);
     return res.data;
   },
   delete: async (id: string) => {

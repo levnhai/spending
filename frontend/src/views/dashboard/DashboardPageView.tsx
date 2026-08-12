@@ -36,24 +36,24 @@ export const DashboardPageView: React.FC = () => {
     try {
       const [sumRes, pieRes, barRes, lineRes, topRes, weeklyRes, txRes] =
         await Promise.all([
-          analyticsApi.getSummary(),
-          analyticsApi.getPieChart(),
-          analyticsApi.getBarChart(),
-          analyticsApi.getLineChart(),
-          analyticsApi.getTopCategories(),
-          analyticsApi.getWeeklyChart(),
-          transactionApi.getAll(),
+          analyticsApi.getSummary().catch(() => null),
+          analyticsApi.getPieChart().catch(() => []),
+          analyticsApi.getBarChart().catch(() => []),
+          analyticsApi.getLineChart().catch(() => []),
+          analyticsApi.getTopCategories().catch(() => []),
+          analyticsApi.getWeeklyChart().catch(() => []),
+          transactionApi.getAll().catch(() => []),
         ]);
 
-      setSummary(sumRes);
-      setPieData(pieRes);
-      setBarData(barRes);
-      setLineData(lineRes);
-      setTopCategories(topRes);
-      setWeeklyData(weeklyRes);
-      setTransactions(txRes);
+      if (sumRes) setSummary(sumRes);
+      if (pieRes) setPieData(pieRes);
+      if (barRes) setBarData(barRes);
+      if (lineRes) setLineData(lineRes);
+      if (topRes) setTopCategories(topRes);
+      if (weeklyRes) setWeeklyData(weeklyRes);
+      if (txRes) setTransactions(txRes);
     } catch (e) {
-      console.error(e);
+      console.error('Fetch dashboard data error:', e);
     } finally {
       setLoading(false);
     }

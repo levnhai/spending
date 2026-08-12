@@ -2,7 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Transaction, TransactionDocument, TransactionType } from '../../schemas/transaction.schema';
-import { Wallet, WalletDocument } from '../../schemas/wallet.schema';
+import { Wallet, WalletDocument, WalletType } from '../../schemas/wallet.schema';
+import { SavingsGoal, SavingsGoalDocument } from '../../schemas/savings-goal.schema';
 import { CreateTransactionDto, FilterTransactionDto } from './dto/transaction.dto';
 
 @Injectable()
@@ -10,7 +11,22 @@ export class TransactionsService {
   constructor(
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
+    @InjectModel(SavingsGoal.name) private goalModel: Model<SavingsGoalDocument>,
   ) {}
+
+  private async syncSavingsGoal(wallet: WalletDocument | null) {
+    if (!wallet) return;
+    if (wallet.savingsGoalId || wallet.type === WalletType.SAVINGS) {
+      const goal = await this.goalModel.findOne({
+        $or: [{ _id: wallet.savingsGoalId }, { walletId: wallet._id }],
+      });
+      if (goal) {
+        goal.currentAmount = wallet.currentBalance;
+        goal.isCompleted = goal.currentAmount >= goal.targetAmount;
+        await goal.save();
+      }
+    }
+  }
 
   async create(userId: string, dto: CreateTransactionDto) {
     const userObjId = new Types.ObjectId(userId);
@@ -42,14 +58,18 @@ export class TransactionsService {
     if (dto.type === TransactionType.INCOME) {
       wallet.currentBalance += dto.amount;
       await wallet.save();
+      await this.syncSavingsGoal(wallet);
     } else if (dto.type === TransactionType.EXPENSE) {
       wallet.currentBalance -= dto.amount;
       await wallet.save();
+      await this.syncSavingsGoal(wallet);
     } else if (dto.type === TransactionType.TRANSFER && toWallet) {
       wallet.currentBalance -= dto.amount;
       toWallet.currentBalance += dto.amount;
       await wallet.save();
       await toWallet.save();
+      await this.syncSavingsGoal(wallet);
+      await this.syncSavingsGoal(toWallet);
     }
 
     return transaction.populate(['walletId', 'toWalletId', 'categoryId']);
@@ -113,17 +133,21 @@ export class TransactionsService {
       if (transaction.type === TransactionType.INCOME) {
         wallet.currentBalance -= transaction.amount;
         await wallet.save();
+        await this.syncSavingsGoal(wallet);
       } else if (transaction.type === TransactionType.EXPENSE) {
         wallet.currentBalance += transaction.amount;
         await wallet.save();
+        await this.syncSavingsGoal(wallet);
       } else if (transaction.type === TransactionType.TRANSFER && transaction.toWalletId) {
         wallet.currentBalance += transaction.amount;
         await wallet.save();
+        await this.syncSavingsGoal(wallet);
 
         const toWallet = await this.walletModel.findById(transaction.toWalletId);
         if (toWallet) {
           toWallet.currentBalance -= transaction.amount;
           await toWallet.save();
+          await this.syncSavingsGoal(toWallet);
         }
       }
     }

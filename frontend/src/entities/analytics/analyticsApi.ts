@@ -2,6 +2,7 @@ import { api } from '@/shared/lib/api';
 
 export interface DashboardSummary {
   totalBalance: number;
+  totalSavings?: number;
   monthlyIncome: number;
   monthlyExpense: number;
   todayIncome: number;

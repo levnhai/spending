@@ -8,6 +8,7 @@ export enum WalletType {
   BANK = 'bank',
   EWALLET = 'ewallet',
   CREDIT = 'credit',
+  SAVINGS = 'savings',
 }
 
 @Schema({ timestamps: true })
@@ -35,6 +36,12 @@ export class Wallet {
 
   @Prop({ default: false })
   isDefault: boolean;
+
+  @Prop({ default: false })
+  isExcludedFromTotal: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'SavingsGoal', default: null })
+  savingsGoalId: Types.ObjectId | null;
 }
 
 export const WalletSchema = SchemaFactory.createForClass(Wallet);

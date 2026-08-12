@@ -2,29 +2,46 @@
 
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/widgets/header/Header';
-import { Plus, Trash2, Target, PiggyBank, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Target, PiggyBank, ArrowUpRight, ArrowDownLeft, CheckCircle2, Wallet as WalletIcon } from 'lucide-react';
 import { goalApi, SavingsGoal } from '@/entities/savings-goal/goalApi';
-import { formatVND, formatDate } from '@/shared/lib/formatters';
+import { walletApi, Wallet } from '@/entities/wallet/walletApi';
+import { formatVND, formatDate, formatNumberWithSpaces, parseFormattedNumber } from '@/shared/lib/formatters';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
 import { useUserStore } from '@/entities/user/useUserStore';
 
 export const SavingsPageView: React.FC = () => {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
+  
+  // Deposit / Withdraw Modal State
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
+  const [actionType, setActionType] = useState<'deposit' | 'withdraw'>('deposit');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositNote, setDepositNote] = useState('');
+
   const showAmount = useUserStore((s) => s.showAmount);
 
+  // Form create state
   const [title, setTitle] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [initialAmount, setInitialAmount] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [depositAmount, setDepositAmount] = useState('');
 
   const fetchGoals = async () => {
     try {
-      const data = await goalApi.getAll();
-      setGoals(data);
+      const [goalsData, walletsData] = await Promise.all([
+        goalApi.getAll(),
+        walletApi.getAll(),
+      ]);
+      setGoals(goalsData);
+      const paymentWallets = walletsData.filter((w) => w.type !== 'savings' && !w.isExcludedFromTotal);
+      setWallets(paymentWallets);
+      if (paymentWallets.length > 0) {
+        setSelectedWalletId(paymentWallets[0]._id);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -36,11 +53,15 @@ export const SavingsPageView: React.FC = () => {
 
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
+    const numTarget = parseFormattedNumber(targetAmount);
+    const numInitial = parseFormattedNumber(initialAmount) || 0;
+    if (!numTarget || numTarget <= 0) return alert('Vui lòng nhập số tiền mục tiêu hợp lệ');
+
     try {
       await goalApi.create({
         title,
-        targetAmount: Number(targetAmount),
-        currentAmount: Number(initialAmount) || 0,
+        targetAmount: numTarget,
+        currentAmount: numInitial,
         deadline: deadline || undefined,
       });
       setTitle('');
@@ -54,21 +75,40 @@ export const SavingsPageView: React.FC = () => {
     }
   };
 
-  const handleDeposit = async (e: React.FormEvent) => {
+  const handleOpenTransactionModal = (goalId: string, type: 'deposit' | 'withdraw') => {
+    setDepositGoalId(goalId);
+    setActionType(type);
+    setDepositAmount('');
+    setDepositNote('');
+    if (wallets.length > 0) {
+      setSelectedWalletId(wallets[0]._id);
+    }
+  };
+
+  const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!depositGoalId || !depositAmount) return;
+    if (!depositGoalId) return;
+    const numAmount = parseFormattedNumber(depositAmount);
+    if (!numAmount || numAmount <= 0) return alert('Vui lòng nhập số tiền hợp lệ');
+
     try {
-      await goalApi.deposit(depositGoalId, Number(depositAmount));
+      await goalApi.deposit(depositGoalId, {
+        amount: numAmount,
+        walletId: selectedWalletId || undefined,
+        type: actionType,
+        note: depositNote,
+      });
       setDepositAmount('');
+      setDepositNote('');
       setDepositGoalId(null);
       fetchGoals();
-    } catch (e) {
-      alert('Nạp tiền thất bại');
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Giao dịch thất bại');
     }
   };
 
   const handleDeleteGoal = async (id: string) => {
-    if (confirm('Xóa mục tiêu tiết kiệm này?')) {
+    if (confirm('Xóa mục tiêu tiết kiệm này? Ví tương ứng cũng sẽ bị xóa.')) {
       try {
         await goalApi.delete(id);
         fetchGoals();
@@ -78,6 +118,8 @@ export const SavingsPageView: React.FC = () => {
     }
   };
 
+  const selectedGoal = goals.find((g) => g._id === depositGoalId);
+
   return (
     <div className="min-h-screen pb-20 md:pb-8 space-y-6">
       <Header title="Mục Tiêu Tiết Kiệm Tài Chính" onOpenQuickAdd={() => setIsQuickAddOpen(true)} />
@@ -86,7 +128,7 @@ export const SavingsPageView: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Danh Sách Mục Tiêu Tiết Kiệm</h2>
-            <p className="text-xs text-slate-400">Mua laptop, du lịch, quỹ dự phòng khẩn cấp...</p>
+            <p className="text-xs text-slate-400">Tích lũy tài sản cho mục tiêu cá nhân (Các ví này không tính vào Tổng số dư thanh toán)</p>
           </div>
 
           <button
@@ -165,39 +207,116 @@ export const SavingsPageView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Deposit action */}
-                {!g.isCompleted && (
+                {/* Action buttons (Nạp / Rút) */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
-                    onClick={() => setDepositGoalId(g._id)}
-                    className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors flex items-center justify-center gap-2"
+                    onClick={() => handleOpenTransactionModal(g._id, 'deposit')}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white dark:text-emerald-400 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
                   >
                     <PiggyBank className="w-4 h-4" />
-                    <span>Nạp Tiền Tích Lũy</span>
+                    <span>Nạp tiền</span>
                   </button>
-                )}
+
+                  <button
+                    onClick={() => handleOpenTransactionModal(g._id, 'withdraw')}
+                    disabled={g.currentAmount <= 0}
+                    className="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500 hover:text-white text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:hover:bg-slate-100 disabled:hover:text-slate-700"
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                    <span>Rút về ví</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Deposit Modal */}
-        {depositGoalId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Nạp Tiền Vào Mục Tiêu</h3>
-              <form onSubmit={handleDeposit} className="space-y-4">
+        {/* Deposit / Withdraw Modal */}
+        {depositGoalId && selectedGoal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {actionType === 'deposit' ? 'Nạp Tiền Vào Mục Tiêu' : 'Rút Tiền Về Ví'}
+                </h3>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-500 font-medium">
+                  {selectedGoal.title}
+                </span>
+              </div>
+
+              {/* Action Selector */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setActionType('deposit')}
+                  className={`py-2 rounded-lg font-semibold text-xs transition-all ${
+                    actionType === 'deposit'
+                      ? 'bg-emerald-500 text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  Nạp Tiền Tích Lũy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionType('withdraw')}
+                  className={`py-2 rounded-lg font-semibold text-xs transition-all ${
+                    actionType === 'withdraw'
+                      ? 'bg-indigo-500 text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  Rút Về Ví Thanh Toán
+                </button>
+              </div>
+
+              <form onSubmit={handleDepositSubmit} className="space-y-4">
+                {/* Select payment wallet */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Số Tiền Nạp (VNĐ)</label>
-                  <input
-                    type="number"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="1.000.000"
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">
+                    {actionType === 'deposit' ? 'Rút Tiền Từ Ví' : 'Nhận Tiền Về Ví'}
+                  </label>
+                  <select
+                    value={selectedWalletId}
+                    onChange={(e) => setSelectedWalletId(e.target.value)}
                     required
+                    className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none"
+                  >
+                    {wallets.map((w) => (
+                      <option key={w._id} value={w._id}>
+                        {w.name} ({w.currentBalance.toLocaleString()}đ)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Số Tiền (VNĐ)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(formatNumberWithSpaces(e.target.value))}
+                    placeholder="VD: 1 000 000"
+                    required
+                    className="w-full text-xl font-bold px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Ghi Chú (Tùy chọn)</label>
+                  <input
+                    type="text"
+                    value={depositNote}
+                    onChange={(e) => setDepositNote(e.target.value)}
+                    placeholder={actionType === 'deposit' ? `Tích lũy cho ${selectedGoal.title}` : `Rút từ ${selectedGoal.title}`}
                     className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none"
                   />
                 </div>
-                <div className="flex items-center justify-end gap-3">
+
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setDepositGoalId(null)}
@@ -207,9 +326,11 @@ export const SavingsPageView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-md"
+                    className={`px-6 py-2.5 rounded-xl text-white font-semibold text-sm shadow-md transition-all ${
+                      actionType === 'deposit' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-indigo-500 hover:bg-indigo-600'
+                    }`}
                   >
-                    Xác Nhận Nạp
+                    {actionType === 'deposit' ? 'Xác Nhận Nạp' : 'Xác Nhận Rút'}
                   </button>
                 </div>
               </form>
@@ -219,9 +340,10 @@ export const SavingsPageView: React.FC = () => {
 
         {/* Add Goal Modal */}
         {isAddGoalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
             <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Tạo Mục Tiêu Tiết Kiệm Mới</h3>
+              <p className="text-xs text-slate-400">Một ví tiết kiệm riêng biệt sẽ tự động được khởi tạo tương ứng với mục tiêu này.</p>
               <form onSubmit={handleCreateGoal} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Tên Mục Tiêu</label>
@@ -238,10 +360,11 @@ export const SavingsPageView: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Số Tiền Mục Tiêu (VNĐ)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={targetAmount}
-                    onChange={(e) => setTargetAmount(e.target.value)}
-                    placeholder="30.000.000"
+                    onChange={(e) => setTargetAmount(formatNumberWithSpaces(e.target.value))}
+                    placeholder="30 000 000"
                     required
                     className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none"
                   />
@@ -250,9 +373,10 @@ export const SavingsPageView: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Số Tiền Đã Có Ban Đầu (Tùy chọn)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={initialAmount}
-                    onChange={(e) => setInitialAmount(e.target.value)}
+                    onChange={(e) => setInitialAmount(formatNumberWithSpaces(e.target.value))}
                     placeholder="0"
                     className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none"
                   />

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Wallet, TrendingUp, TrendingDown, Calendar, CreditCard, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Calendar, PiggyBank } from 'lucide-react';
 import { DashboardSummary } from '@/entities/analytics/analyticsApi';
 import { AmountDisplay } from '@/shared/ui/AmountDisplay';
 
@@ -26,7 +26,7 @@ export const MetricsOverviewCards: React.FC<MetricsProps> = ({ data, isLoading }
       title: 'Tổng Số Dư',
       amount: data.totalBalance,
       isMoney: true,
-      subtitle: 'Tất cả các ví',
+      subtitle: 'Ví thanh toán',
       icon: Wallet,
       color: 'from-indigo-500 to-purple-600',
     },
@@ -63,12 +63,12 @@ export const MetricsOverviewCards: React.FC<MetricsProps> = ({ data, isLoading }
       color: 'from-cyan-500 to-blue-600',
     },
     {
-      title: 'Tổng Giao Dịch',
-      value: `${data.totalTransactions} lượt`,
-      isMoney: false,
-      subtitle: 'Lịch sử ghi chép',
-      icon: CreditCard,
-      color: 'from-violet-500 to-indigo-600',
+      title: 'Tổng Tiết Kiệm',
+      amount: data.totalSavings || 0,
+      isMoney: true,
+      subtitle: 'Mục tiêu tích lũy',
+      icon: PiggyBank,
+      color: 'from-cyan-500 to-teal-600',
     },
   ];
 
@@ -90,11 +90,7 @@ export const MetricsOverviewCards: React.FC<MetricsProps> = ({ data, isLoading }
               </div>
             </div>
             <div className="text-base md:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
-              {card.isMoney ? (
-                <AmountDisplay amount={card.amount!} className="text-base md:text-lg font-bold text-slate-900 dark:text-white" />
-              ) : (
-                card.value
-              )}
+              <AmountDisplay amount={card.amount} className="text-base md:text-lg font-bold text-slate-900 dark:text-white" />
             </div>
             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 block mt-1">
               {card.subtitle}

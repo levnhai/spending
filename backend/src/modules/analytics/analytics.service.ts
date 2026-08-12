@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Transaction, TransactionDocument, TransactionType } from '../../schemas/transaction.schema';
-import { Wallet, WalletDocument } from '../../schemas/wallet.schema';
+import { Wallet, WalletDocument, WalletType } from '../../schemas/wallet.schema';
 
 @Injectable()
 export class AnalyticsService {
@@ -23,9 +23,15 @@ export class AnalyticsService {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-    // Total balance across wallets
+    // Total balance across spending wallets (excluding savings goals)
     const wallets = await this.walletModel.find({ userId: userObjId });
-    const totalBalance = wallets.reduce((sum, w) => sum + w.currentBalance, 0);
+    const totalBalance = wallets
+      .filter((w) => w.type !== WalletType.SAVINGS && !w.isExcludedFromTotal)
+      .reduce((sum, w) => sum + w.currentBalance, 0);
+
+    const totalSavings = wallets
+      .filter((w) => w.type === WalletType.SAVINGS || w.isExcludedFromTotal)
+      .reduce((sum, w) => sum + w.currentBalance, 0);
 
     // Monthly Income & Expense
     const monthlyStats = await this.transactionModel.aggregate([
@@ -77,6 +83,7 @@ export class AnalyticsService {
 
     return {
       totalBalance,
+      totalSavings,
       monthlyIncome,
       monthlyExpense,
       todayIncome,

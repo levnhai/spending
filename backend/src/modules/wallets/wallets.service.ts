@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Wallet, WalletDocument } from '../../schemas/wallet.schema';
+import { Wallet, WalletDocument, WalletType } from '../../schemas/wallet.schema';
 import { CreateWalletDto, UpdateWalletDto } from './dto/wallet.dto';
 
 @Injectable()
@@ -23,11 +23,13 @@ export class WalletsService {
 
   async create(userId: string, dto: CreateWalletDto) {
     const count = await this.walletModel.countDocuments({ userId: new Types.ObjectId(userId) });
+    const isSavings = dto.type === WalletType.SAVINGS;
     const newWallet = await this.walletModel.create({
       ...dto,
       userId: new Types.ObjectId(userId),
       currentBalance: dto.initialBalance,
-      isDefault: count === 0,
+      isDefault: count === 0 && !isSavings,
+      isExcludedFromTotal: dto.isExcludedFromTotal ?? isSavings,
     });
     return newWallet;
   }

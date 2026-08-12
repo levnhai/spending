@@ -25,7 +25,7 @@ export const WalletsPageView: React.FC = () => {
 
   // Form state for creating wallet
   const [name, setName] = useState('');
-  const [type, setType] = useState<'cash' | 'bank' | 'ewallet' | 'credit'>('bank');
+  const [type, setType] = useState<'cash' | 'bank' | 'ewallet' | 'credit' | 'savings'>('bank');
   const [initialBalance, setInitialBalance] = useState('');
   const [color, setColor] = useState('#3B82F6');
 
@@ -48,7 +48,13 @@ export const WalletsPageView: React.FC = () => {
 
   // Calculate Overview Stats
   const stats = useMemo(() => {
-    const totalWalletBalance = wallets.reduce((sum, w) => sum + (w.currentBalance || 0), 0);
+    const totalPaymentBalance = wallets
+      .filter((w) => w.type !== 'savings' && !w.isExcludedFromTotal)
+      .reduce((sum, w) => sum + (w.currentBalance || 0), 0);
+
+    const totalSavingsBalance = wallets
+      .filter((w) => w.type === 'savings' || w.isExcludedFromTotal)
+      .reduce((sum, w) => sum + (w.currentBalance || 0), 0);
 
     const totalLentRemaining = debts
       .filter((d) => d.type === 'LENT')
@@ -58,10 +64,11 @@ export const WalletsPageView: React.FC = () => {
       .filter((d) => d.type === 'BORROWED')
       .reduce((sum, d) => sum + Math.max(0, d.amount - (d.paidAmount || 0)), 0);
 
-    const netWorth = totalWalletBalance + totalLentRemaining - totalBorrowedRemaining;
+    const netWorth = totalPaymentBalance + totalSavingsBalance + totalLentRemaining - totalBorrowedRemaining;
 
     return {
-      totalWalletBalance,
+      totalPaymentBalance,
+      totalSavingsBalance,
       totalLentRemaining,
       totalBorrowedRemaining,
       netWorth,
@@ -77,7 +84,7 @@ export const WalletsPageView: React.FC = () => {
         type,
         initialBalance: parseFormattedNumber(initialBalance),
         color,
-        icon: type === 'bank' ? 'Building' : type === 'cash' ? 'Banknote' : 'Wallet',
+        icon: type === 'bank' ? 'Building' : type === 'cash' ? 'Banknote' : type === 'savings' ? 'Scale' : 'Wallet',
       });
       setName('');
       setInitialBalance('');
@@ -125,11 +132,15 @@ export const WalletsPageView: React.FC = () => {
     if (t === 'bank') return Building;
     if (t === 'cash') return Banknote;
     if (t === 'credit') return CreditCard;
+    if (t === 'savings') return Scale;
     return WalletIcon;
   };
 
   const lentDebts = debts.filter((d) => d.type === 'LENT');
   const borrowedDebts = debts.filter((d) => d.type === 'BORROWED');
+
+  const paymentWallets = wallets.filter((w) => w.type !== 'savings' && !w.isExcludedFromTotal);
+  const savingsWallets = wallets.filter((w) => w.type === 'savings' || w.isExcludedFromTotal);
 
   return (
     <div className="min-h-screen pb-20 md:pb-8 space-y-6">
@@ -145,17 +156,27 @@ export const WalletsPageView: React.FC = () => {
               <Scale className="w-4 h-4 opacity-80" />
             </div>
             <AmountDisplay amount={stats.netWorth} className="text-2xl font-bold tracking-tight" />
-            <p className="text-[11px] text-indigo-100/80">=(Tổng ví + Cho mượn) - Tôi nợ</p>
+            <p className="text-[11px] text-indigo-100/80">=(Tổng ví + Tiết kiệm + Cho mượn) - Tôi nợ</p>
           </div>
 
-          {/* Wallets Balance */}
+          {/* Wallets Payment Balance */}
           <div className="p-5 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800/80 space-y-1">
             <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Tổng Số Dư Trong Ví</span>
+              <span>Số Dư Khả Dụng (Thanh Toán)</span>
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
             </div>
-            <AmountDisplay amount={stats.totalWalletBalance} className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight" />
-            <p className="text-[11px] text-slate-400">Từ {wallets.length} nguồn tiền</p>
+            <AmountDisplay amount={stats.totalPaymentBalance} className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight" />
+            <p className="text-[11px] text-slate-400">Từ {paymentWallets.length} ví thanh toán chính</p>
+          </div>
+
+          {/* Savings Balance */}
+          <div className="p-5 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800/80 space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
+              <span>Mục Tiêu Tiết Kiệm</span>
+              <ArrowUpRight className="w-4 h-4 text-cyan-500" />
+            </div>
+            <AmountDisplay amount={stats.totalSavingsBalance} className="text-2xl font-bold text-cyan-600 dark:text-cyan-400 tracking-tight" />
+            <p className="text-[11px] text-slate-400">Tích lũy {savingsWallets.length} mục tiêu (Không tính tổng số dư)</p>
           </div>
 
           {/* Total Lent */}
@@ -164,39 +185,27 @@ export const WalletsPageView: React.FC = () => {
               <span>Tiền Cho Mượn (Nợ Tôi)</span>
               <ArrowUpRight className="w-4 h-4 text-emerald-500" />
             </div>
-            <AmountDisplay amount={stats.totalLentRemaining} className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight" />
-            <p className="text-[11px] text-slate-400">{lentDebts.length} người đang mượn</p>
-          </div>
-
-          {/* Total Borrowed */}
-          <div className="p-5 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800/80 space-y-1">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Khoản Đi Vay (Tôi Nợ)</span>
-              <ArrowDownLeft className="w-4 h-4 text-amber-500" />
-            </div>
-            <AmountDisplay amount={stats.totalBorrowedRemaining} className="text-2xl font-bold text-amber-600 dark:text-amber-400 tracking-tight" />
-            <p className="text-[11px] text-slate-400">{borrowedDebts.length} khoản nợ cần trả</p>
+            <AmountDisplay amount={stats.totalLentRemaining} className="text-2xl font-bold text-emerald-500 tracking-tight" />
+            <p className="text-[11px] text-slate-400">Từ {lentDebts.length} khoản cho vay</p>
           </div>
         </div>
 
-        {/* TABS CONTROL & ACTION BUTTONS */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl w-full sm:w-auto">
+        {/* CONTROLS BAR */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">
             <button
               onClick={() => setActiveTab('wallets')}
-              className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'wallets'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-md'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Ví & Tài Khoản ({wallets.length})
+              Ví Thanh Toán ({wallets.length})
             </button>
-
             <button
               onClick={() => setActiveTab('lent')}
-              className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'lent'
                   ? 'bg-emerald-500 text-white shadow-md'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -204,16 +213,15 @@ export const WalletsPageView: React.FC = () => {
             >
               Cho Mượn ({lentDebts.length})
             </button>
-
             <button
               onClick={() => setActiveTab('borrowed')}
-              className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'borrowed'
                   ? 'bg-amber-500 text-white shadow-md'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Tôi Đi Vay ({borrowedDebts.length})
+              Vay Nợ ({borrowedDebts.length})
             </button>
           </div>
 
@@ -248,29 +256,34 @@ export const WalletsPageView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {wallets.map((w) => {
               const Icon = getWalletIcon(w.type);
+              const isSavings = w.type === 'savings' || w.isExcludedFromTotal;
               return (
                 <div
                   key={w._id}
-                  className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800/80 space-y-4 hover:shadow-xl transition-all"
+                  className={`p-6 rounded-3xl glass-card border space-y-4 hover:shadow-xl transition-all ${
+                    isSavings ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-slate-200/80 dark:border-slate-800/80'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div
                         className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md"
-                        style={{ backgroundColor: w.color || '#3B82F6' }}
+                        style={{ backgroundColor: w.color || (isSavings ? '#06B6D4' : '#3B82F6') }}
                       >
                         <Icon className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className="font-bold text-base text-slate-900 dark:text-white">{w.name}</h3>
-                        <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider">
+                        <span className={`text-[11px] font-semibold tracking-wider uppercase ${isSavings ? 'text-cyan-500 font-bold' : 'text-slate-400'}`}>
                           {w.type === 'cash'
                             ? 'Tiền mặt'
                             : w.type === 'bank'
                             ? 'Ngân hàng'
                             : w.type === 'ewallet'
                             ? 'Ví điện tử'
-                            : 'Thẻ tín dụng'}
+                            : w.type === 'credit'
+                            ? 'Thẻ tín dụng'
+                            : 'Ví Tiết Kiệm (Không tính tổng)'}
                         </span>
                       </div>
                     </div>
@@ -284,10 +297,12 @@ export const WalletsPageView: React.FC = () => {
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60">
-                    <span className="text-xs text-slate-400 font-medium block mb-0.5">Số dư khả dụng</span>
+                    <span className="text-xs text-slate-400 font-medium block mb-0.5">
+                      {isSavings ? 'Số tiền đã tích lũy' : 'Số dư khả dụng'}
+                    </span>
                     <AmountDisplay
                       amount={w.currentBalance}
-                      className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight"
+                      className={`text-2xl font-bold tracking-tight ${isSavings ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'}`}
                     />
                   </div>
                 </div>

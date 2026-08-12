@@ -36,4 +36,19 @@ export class DepositSavingsDto {
   @ApiProperty({ example: 1000000 })
   @IsNumber()
   amount: number;
+
+  @ApiPropertyOptional({ example: '65a000000000000000000001' })
+  @IsOptional()
+  @IsString()
+  walletId?: string;
+
+  @ApiPropertyOptional({ example: 'deposit', enum: ['deposit', 'withdraw'] })
+  @IsOptional()
+  @IsString()
+  type?: 'deposit' | 'withdraw';
+
+  @ApiPropertyOptional({ example: 'Tích lũy mua xe' })
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
