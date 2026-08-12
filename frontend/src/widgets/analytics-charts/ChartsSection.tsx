@@ -177,10 +177,10 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
         </div>
       </div>
 
-      {/* Biểu đồ Đường: Xu Hướng Chi Tiêu Theo Ngày */}
+      {/* Biểu đồ Đường: Xu Hướng Thu Nhập & Chi Tiêu Theo Ngày */}
       <div className="lg:col-span-8 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80">
         <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">
-          Xu Hướng Chi Tiêu Theo Ngày Trong Tháng
+          Biến Động Thu Nhập & Chi Tiêu Theo Ngày Trong Tháng
         </h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -189,7 +189,9 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
               <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
               <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={formatAxisVND} />
               <Tooltip formatter={(value: any) => formatVND(Number(value))} />
-              <Line type="monotone" dataKey="amount" name="Chi tiêu" stroke="#6366F1" strokeWidth={3} dot={{ r: 3 }} />
+              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+              <Line type="monotone" dataKey="income" name="Thu nhập" stroke="#10B981" strokeWidth={3} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="expense" name="Chi tiêu" stroke="#F43F5E" strokeWidth={3} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

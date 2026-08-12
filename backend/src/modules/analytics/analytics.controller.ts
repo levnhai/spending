@@ -52,4 +52,36 @@ export class AnalyticsController {
   getWeeklyComparison(@Request() req: any) {
     return this.analyticsService.getWeeklyComparison(req.user.userId);
   }
+
+  @Get('income-pie-chart')
+  @ApiOperation({ summary: 'Dữ liệu biểu đồ tròn tỷ lệ thu nhập theo danh mục' })
+  @ApiQuery({ name: 'month', required: false })
+  @ApiQuery({ name: 'year', required: false })
+  getIncomePieChartCategoryData(@Request() req: any, @Query('month') month?: number, @Query('year') year?: number) {
+    return this.analyticsService.getIncomePieChartCategoryData(req.user.userId, month, year);
+  }
+
+  @Get('compare-months')
+  @ApiOperation({ summary: 'So sánh báo cáo tài chính giữa 2 tháng' })
+  @ApiQuery({ name: 'm1', required: true })
+  @ApiQuery({ name: 'y1', required: true })
+  @ApiQuery({ name: 'm2', required: true })
+  @ApiQuery({ name: 'y2', required: true })
+  compareMonths(
+    @Request() req: any,
+    @Query('m1') m1: number,
+    @Query('y1') y1: number,
+    @Query('m2') m2: number,
+    @Query('y2') y2: number,
+  ) {
+    return this.analyticsService.compareMonths(req.user.userId, Number(m1), Number(y1), Number(m2), Number(y2));
+  }
+
+  @Get('compare-days')
+  @ApiOperation({ summary: 'So sánh thu chi giữa 2 ngày bất kỳ' })
+  @ApiQuery({ name: 'date1', required: true })
+  @ApiQuery({ name: 'date2', required: true })
+  compareDays(@Request() req: any, @Query('date1') date1: string, @Query('date2') date2: string) {
+    return this.analyticsService.compareDays(req.user.userId, date1, date2);
+  }
 }

@@ -192,24 +192,29 @@ export class AnalyticsService {
       {
         $match: {
           userId: userObjId,
-          type: TransactionType.EXPENSE,
           date: { $gte: startOfMonth, $lte: endOfMonth },
         },
       },
       {
         $group: {
-          _id: { $dayOfMonth: '$date' },
-          totalSpent: { $sum: '$amount' },
+          _id: {
+            day: { $dayOfMonth: '$date' },
+            type: '$type',
+          },
+          total: { $sum: '$amount' },
         },
       },
     ]);
 
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const dayNum = i + 1;
-      const found = result.find((r) => r._id === dayNum);
+      const foundInc = result.find((r) => r._id.day === dayNum && r._id.type === TransactionType.INCOME);
+      const foundExp = result.find((r) => r._id.day === dayNum && r._id.type === TransactionType.EXPENSE);
       return {
         day: `${dayNum}/${m}`,
-        amount: found ? found.totalSpent : 0,
+        amount: foundExp ? foundExp.total : 0,
+        income: foundInc ? foundInc.total : 0,
+        expense: foundExp ? foundExp.total : 0,
       };
     });
 
@@ -289,5 +294,167 @@ export class AnalyticsService {
     });
 
     return weeklyData;
+  }
+
+  async getIncomePieChartCategoryData(userId: string, month?: number, year?: number) {
+    const userObjId = new Types.ObjectId(userId);
+    const now = new Date();
+    const m = month ? Number(month) : now.getMonth() + 1;
+    const y = year ? Number(year) : now.getFullYear();
+
+    const startOfMonth = new Date(y, m - 1, 1);
+    const endOfMonth = new Date(y, m, 0, 23, 59, 59);
+
+    const result = await this.transactionModel.aggregate([
+      {
+        $match: {
+          userId: userObjId,
+          type: TransactionType.INCOME,
+          date: { $gte: startOfMonth, $lte: endOfMonth },
+        },
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$categoryId',
+          name: { $first: { $ifNull: ['$category.name', 'Khác'] } },
+          color: { $first: { $ifNull: ['$category.color', '#10B981'] } },
+          icon: { $first: { $ifNull: ['$category.icon', 'Tag'] } },
+          value: { $sum: '$amount' },
+        },
+      },
+      { $sort: { value: -1 } },
+    ]);
+
+    return result;
+  }
+
+  async compareMonths(userId: string, m1: number, y1: number, m2: number, y2: number) {
+    const userObjId = new Types.ObjectId(userId);
+
+    const start1 = new Date(y1, m1 - 1, 1);
+    const end1 = new Date(y1, m1, 0, 23, 59, 59);
+
+    const start2 = new Date(y2, m2 - 1, 1);
+    const end2 = new Date(y2, m2, 0, 23, 59, 59);
+
+    const [txs1, txs2, cats1, cats2] = await Promise.all([
+      this.transactionModel.find({ userId: userObjId, date: { $gte: start1, $lte: end1 } }),
+      this.transactionModel.find({ userId: userObjId, date: { $gte: start2, $lte: end2 } }),
+      this.getPieChartCategoryData(userId, m1, y1),
+      this.getPieChartCategoryData(userId, m2, y2),
+    ]);
+
+    const inc1 = txs1.filter((t) => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0);
+    const exp1 = txs1.filter((t) => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0);
+
+    const inc2 = txs2.filter((t) => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0);
+    const exp2 = txs2.filter((t) => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0);
+
+    const catMap = new Map<string, { name: string; color: string; icon: string; val1: number; val2: number }>();
+
+    cats1.forEach((c) => {
+      catMap.set(c.name, { name: c.name, color: c.color, icon: c.icon, val1: c.value, val2: 0 });
+    });
+
+    cats2.forEach((c) => {
+      if (catMap.has(c.name)) {
+        catMap.get(c.name)!.val2 = c.value;
+      } else {
+        catMap.set(c.name, { name: c.name, color: c.color, icon: c.icon, val1: 0, val2: c.value });
+      }
+    });
+
+    const categoryComparison = Array.from(catMap.values()).map((item) => ({
+      ...item,
+      diff: item.val2 - item.val1,
+      diffPercent: item.val1 > 0 ? Math.round(((item.val2 - item.val1) / item.val1) * 100) : item.val2 > 0 ? 100 : 0,
+    }));
+
+    categoryComparison.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+    return {
+      month1: { month: m1, year: y1, income: inc1, expense: exp1, net: inc1 - exp1, categories: cats1 },
+      month2: { month: m2, year: y2, income: inc2, expense: exp2, net: inc2 - exp2, categories: cats2 },
+      diff: {
+        incomeDiff: inc2 - inc1,
+        expenseDiff: exp2 - exp1,
+        netDiff: (inc2 - exp2) - (inc1 - exp1),
+        incomePercent: inc1 > 0 ? Math.round(((inc2 - inc1) / inc1) * 100) : inc2 > 0 ? 100 : 0,
+        expensePercent: exp1 > 0 ? Math.round(((exp2 - exp1) / exp1) * 100) : exp2 > 0 ? 100 : 0,
+      },
+      categoryComparison,
+    };
+  }
+
+  async compareDays(userId: string, dateStr1: string, dateStr2: string) {
+    const userObjId = new Types.ObjectId(userId);
+
+    const d1 = new Date(dateStr1);
+    const start1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate(), 0, 0, 0);
+    const end1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate(), 23, 59, 59);
+
+    const d2 = new Date(dateStr2);
+    const start2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate(), 0, 0, 0);
+    const end2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate(), 23, 59, 59);
+
+    const [txs1, txs2] = await Promise.all([
+      this.transactionModel.find({ userId: userObjId, date: { $gte: start1, $lte: end1 } }).populate('categoryId'),
+      this.transactionModel.find({ userId: userObjId, date: { $gte: start2, $lte: end2 } }).populate('categoryId'),
+    ]);
+
+    const inc1 = txs1.filter((t) => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0);
+    const exp1 = txs1.filter((t) => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0);
+
+    const inc2 = txs2.filter((t) => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0);
+    const exp2 = txs2.filter((t) => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0);
+
+    const catMap = new Map<string, { name: string; color: string; icon: string; val1: number; val2: number }>();
+
+    txs1.filter((t) => t.type === TransactionType.EXPENSE).forEach((t: any) => {
+      const name = t.categoryId?.name || 'Khác';
+      const color = t.categoryId?.color || '#6B7280';
+      const icon = t.categoryId?.icon || 'Tag';
+      if (!catMap.has(name)) {
+        catMap.set(name, { name, color, icon, val1: 0, val2: 0 });
+      }
+      catMap.get(name)!.val1 += t.amount;
+    });
+
+    txs2.filter((t) => t.type === TransactionType.EXPENSE).forEach((t: any) => {
+      const name = t.categoryId?.name || 'Khác';
+      const color = t.categoryId?.color || '#6B7280';
+      const icon = t.categoryId?.icon || 'Tag';
+      if (!catMap.has(name)) {
+        catMap.set(name, { name, color, icon, val1: 0, val2: 0 });
+      }
+      catMap.get(name)!.val2 += t.amount;
+    });
+
+    const categoryComparison = Array.from(catMap.values()).map((item) => ({
+      ...item,
+      diff: item.val2 - item.val1,
+    }));
+
+    categoryComparison.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+    return {
+      day1: { date: dateStr1, income: inc1, expense: exp1, net: inc1 - exp1, txCount: txs1.length },
+      day2: { date: dateStr2, income: inc2, expense: exp2, net: inc2 - exp2, txCount: txs2.length },
+      diff: {
+        incomeDiff: inc2 - inc1,
+        expenseDiff: exp2 - exp1,
+        netDiff: (inc2 - exp2) - (inc1 - exp1),
+      },
+      categoryComparison,
+    };
   }
 }
