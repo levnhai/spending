@@ -391,7 +391,7 @@ export const ReportsPageView: React.FC = () => {
                     <Layers className="w-5 h-5 text-indigo-500" />
                     {trendFilter === 'month'
                       ? `Biểu Đồ Biến Động Thu Nhập & Chi Tiêu Hàng Ngày (Tháng ${overviewMonth}/${overviewYear})`
-                      : 'Biểu Đồ Biến Động Thu Nhập & Chi Tiêu Theo Tuần Hiện Tại'}
+                      : 'Biểu Đồ Biến Động Thu Nhập & Chi Tiêu 7 Ngày (Trọng Tâm Hôm Nay)'}
                   </h3>
 
                   <div className="flex items-center gap-2">
@@ -402,7 +402,7 @@ export const ReportsPageView: React.FC = () => {
                       className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer"
                     >
                       <option value="month">Tháng</option>
-                      <option value="week">Tuần</option>
+                      <option value="week">7 Ngày</option>
                     </select>
                   </div>
                 </div>
@@ -414,7 +414,7 @@ export const ReportsPageView: React.FC = () => {
                         trendFilter === 'month'
                           ? dailyTrend
                           : weeklyTrend.map((w) => ({
-                              day: `${w.day} (${w.fullDate})`,
+                              day: w.isToday ? `★ Hôm nay (${w.fullDate})` : `${w.day} (${w.fullDate})`,
                               income: w.income,
                               expense: w.expense,
                               amount: w.expense,

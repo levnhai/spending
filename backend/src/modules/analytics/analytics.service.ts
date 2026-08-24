@@ -243,17 +243,15 @@ export class AnalyticsService {
     const userObjId = new Types.ObjectId(userId);
     const now = new Date();
 
-    const currentDayOfWeek = now.getDay();
-    const distanceToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
-
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distanceToMonday, 0, 0, 0, 0);
-    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6, 23, 59, 59, 999);
+    // 7 ngày lấy Hôm nay làm trọng tâm ở giữa (vị trí thứ 4, offset từ -3 đến +3)
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3, 0, 0, 0, 0);
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59, 999);
 
     const result = await this.transactionModel.aggregate([
       {
         $match: {
           userId: userObjId,
-          date: { $gte: startOfWeek, $lte: endOfWeek },
+          date: { $gte: startDate, $lte: endDate },
         },
       },
       {
@@ -269,14 +267,17 @@ export class AnalyticsService {
       },
     ]);
 
-    const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const dayNameMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
     const weeklyData = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i);
+      const offset = i - 3; // -3, -2, -1, 0, 1, 2, 3
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
       const y = d.getFullYear();
       const m = d.getMonth() + 1;
       const dateNum = d.getDate();
       const fullDate = `${dateNum.toString().padStart(2, '0')}/${m.toString().padStart(2, '0')}`;
+      const dayOfWeek = dayNameMap[d.getDay()];
+      const isToday = offset === 0;
 
       const inc = result.find(
         (r) => r._id.year === y && r._id.month === m && r._id.day === dateNum && r._id.type === TransactionType.INCOME,
@@ -286,10 +287,11 @@ export class AnalyticsService {
       );
 
       return {
-        day: dayLabels[i],
+        day: dayOfWeek,
         fullDate,
         income: inc ? inc.total : 0,
         expense: exp ? exp.total : 0,
+        isToday,
       };
     });
 

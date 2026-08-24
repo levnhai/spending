@@ -76,22 +76,22 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Biểu đồ Cột: Thu & Chi Trong 1 Tuần */}
+      {/* Biểu đồ Cột: Thu & Chi 7 Ngày Gần Đây (Trọng tâm Hôm nay) */}
       <div className="lg:col-span-12 p-5 rounded-2xl glass-card border border-slate-200/80 dark:border-slate-800/80">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>📊</span> Thu & Chi Theo Ngày Trong Tuần
+              <span>📊</span> Thu & Chi 7 Ngày
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              So sánh dòng tiền thu nhập và chi tiêu 7 ngày trong tuần hiện tại
+              So sánh thu nhập & chi tiêu trong 7 ngày xoay quanh ngày hôm nay (3 ngày trước – Hôm nay – 3 ngày tới)
             </p>
           </div>
         </div>
         <div className="h-72">
           {weeklyData.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-              Đang tải dữ liệu biểu đồ tuần...
+              Đang tải dữ liệu biểu đồ...
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -103,7 +103,8 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
                   fontSize={12}
                   tickFormatter={(val, index) => {
                     const item = weeklyData[index];
-                    return item ? `${val} (${item.fullDate})` : val;
+                    if (!item) return val;
+                    return item.isToday ? `★ Hôm nay (${item.fullDate})` : `${val} (${item.fullDate})`;
                   }}
                 />
                 <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={formatAxisVND} />
@@ -111,7 +112,8 @@ export const ChartsSection: React.FC<ChartsProps> = ({ pieData, barData, lineDat
                   formatter={(value: any) => formatVND(Number(value))}
                   labelFormatter={(label, payload) => {
                     const item = payload?.[0]?.payload;
-                    return item ? `${label} (${item.fullDate})` : label;
+                    if (!item) return label;
+                    return item.isToday ? `Hôm nay (${item.day}, ${item.fullDate})` : `${label} (${item.fullDate})`;
                   }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '10px' }} />

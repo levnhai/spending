@@ -41,6 +41,7 @@ export interface WeeklyChartItem {
   fullDate: string;
   income: number;
   expense: number;
+  isToday?: boolean;
 }
 
 export interface CategoryComparisonItem {
