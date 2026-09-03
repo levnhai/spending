@@ -37,6 +37,18 @@ interface AddEditOrderModalProps {
   orderToEdit?: Order | null;
 }
 
+const formatCurrencyInput = (val?: number | string | null): string => {
+  if (val === 0 || val === '0' || !val) return '';
+  const numStr = String(val).replace(/\D/g, '');
+  if (!numStr) return '';
+  return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+};
+
+const parseCurrencyInput = (val: string): number => {
+  const clean = val.replace(/\D/g, '');
+  return clean ? Number(clean) : 0;
+};
+
 const createEmptyCustomer = (): OrderCustomer => ({
   name: '',
   phone: '',
@@ -322,7 +334,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     type="text"
                     value={orderCode}
                     onChange={(e) => setOrderCode(e.target.value)}
-                    placeholder="Tự sinh (vd: DH-0001)"
+                    placeholder="DH-0001"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                   />
                 </div>
@@ -336,11 +348,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     <span>Tiền vốn hàng hóa (VNĐ)</span>
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="1000"
-                    value={costPrice === 0 ? '' : costPrice}
-                    onChange={(e) => setCostPrice(Number(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatCurrencyInput(costPrice)}
+                    onChange={(e) => setCostPrice(parseCurrencyInput(e.target.value))}
                     placeholder="0"
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                   />
@@ -353,11 +364,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     <span>Phí vận chuyển / ship (VNĐ)</span>
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="1000"
-                    value={shippingFee === 0 ? '' : shippingFee}
-                    onChange={(e) => setShippingFee(Number(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatCurrencyInput(shippingFee)}
+                    onChange={(e) => setShippingFee(parseCurrencyInput(e.target.value))}
                     placeholder="0"
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                   />
@@ -649,11 +659,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     Tổng tiền cần thanh toán (VNĐ) <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="1000"
-                    value={custForm.amount === 0 ? '' : custForm.amount}
-                    onChange={(e) => setCustForm({ ...custForm, amount: Number(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatCurrencyInput(custForm.amount)}
+                    onChange={(e) => setCustForm({ ...custForm, amount: parseCurrencyInput(e.target.value) })}
                     placeholder="0"
                     required
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
@@ -665,11 +674,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     Tiền khách đã thanh toán (VNĐ)
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="1000"
-                    value={custForm.paidAmount === 0 ? '' : custForm.paidAmount}
-                    onChange={(e) => setCustForm({ ...custForm, paidAmount: Number(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatCurrencyInput(custForm.paidAmount)}
+                    onChange={(e) => setCustForm({ ...custForm, paidAmount: parseCurrencyInput(e.target.value) })}
                     placeholder="0"
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
                   />

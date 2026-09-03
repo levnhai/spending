@@ -57,6 +57,14 @@ export interface OrderStats {
   completedOrders: number;
   cancelledOrders: number;
   completionRate: number;
+  period?: string;
+  timeline?: {
+    label: string;
+    revenue: number;
+    cost: number;
+    shipping: number;
+    profit: number;
+  }[];
 }
 
 export interface CreateOrderPayload {

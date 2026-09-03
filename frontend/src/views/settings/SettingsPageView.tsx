@@ -106,7 +106,7 @@ export const SettingsPageView: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-20 md:pb-8 space-y-6">
-      <Header title="Cài Đặt Hệ Thống" />
+      <Header title="Hệ Thống" />
 
       <main className="px-4 md:px-8 space-y-6">
         {/* Tabs Navigation */}
@@ -389,7 +389,7 @@ export const SettingsPageView: React.FC = () => {
                           Hiển thị số tiền
                         </p>
                         <p className="text-xs text-slate-400">
-                          {showAmount ? 'Đang hiển thị số tiền rõ ràng' : 'Đang ẩn số tiền bằng dấu sao'}
+                          {showAmount ? 'Hiển thị số tiền' : 'Ẩn số tiền'}
                         </p>
                       </div>
                     </div>

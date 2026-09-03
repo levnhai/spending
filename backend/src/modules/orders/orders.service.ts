@@ -38,6 +38,193 @@ function calculateDateRange(period?: string, fromDate?: string, toDate?: string)
   return { startDate, endDate };
 }
 
+function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
+  const activeOrders = orders.filter((o) => o.status !== OrderStatus.CANCELLED);
+  const now = new Date();
+
+  if (period === 'today') {
+    // 8 khung giờ trong ngày: 0h-3h, 3h-6h, 6h-9h, 9h-12h, 12h-15h, 15h-18h, 18h-21h, 21h-24h
+    const timeSlots = [
+      { label: '0h-3h', minHour: 0, maxHour: 3, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '3h-6h', minHour: 3, maxHour: 6, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '6h-9h', minHour: 6, maxHour: 9, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '9h-12h', minHour: 9, maxHour: 12, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '12h-15h', minHour: 12, maxHour: 15, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '15h-18h', minHour: 15, maxHour: 18, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '18h-21h', minHour: 18, maxHour: 21, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: '21h-24h', minHour: 21, maxHour: 24, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+    ];
+
+    for (const order of activeOrders) {
+      const d = order.orderDate ? new Date(order.orderDate) : new Date((order as any).createdAt || now);
+      const h = d.getHours();
+      const slot = timeSlots.find((s) => h >= s.minHour && h < s.maxHour) || timeSlots[timeSlots.length - 1];
+      const rev = order.totalAmount || 0;
+      const ship = order.shippingFee || 0;
+      const cost = order.costPrice || 0;
+      slot.revenue += rev;
+      slot.shipping += ship;
+      slot.cost += cost;
+      slot.profit += rev - ship - cost;
+    }
+
+    return timeSlots.map((s) => ({
+      label: s.label,
+      revenue: s.revenue,
+      cost: s.cost,
+      shipping: s.shipping,
+      profit: s.profit,
+    }));
+  }
+
+  if (period === 'week') {
+    // 7 ngày trong tuần: Thứ 2 đến Chủ Nhật
+    const days = [
+      { label: 'Thứ 2', dayIndex: 1, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: 'Thứ 3', dayIndex: 2, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: 'Thứ 4', dayIndex: 3, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: 'Thứ 5', dayIndex: 4, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: 'Thứ 6', dayIndex: 5, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: 'Thứ 7', dayIndex: 6, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+      { label: 'Chủ Nhật', dayIndex: 0, profit: 0, revenue: 0, cost: 0, shipping: 0 },
+    ];
+
+    for (const order of activeOrders) {
+      const d = order.orderDate ? new Date(order.orderDate) : new Date((order as any).createdAt || now);
+      const day = d.getDay();
+      const slot = days.find((item) => item.dayIndex === day);
+      if (slot) {
+        const rev = order.totalAmount || 0;
+        const ship = order.shippingFee || 0;
+        const cost = order.costPrice || 0;
+        slot.revenue += rev;
+        slot.shipping += ship;
+        slot.cost += cost;
+        slot.profit += rev - ship - cost;
+      }
+    }
+
+    return days.map((d) => ({
+      label: d.label,
+      revenue: d.revenue,
+      cost: d.cost,
+      shipping: d.shipping,
+      profit: d.profit,
+    }));
+  }
+
+  if (period === 'month') {
+    // Các ngày trong tháng (từ ngày 1 đến ngày cuối tháng)
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthDays = Array.from({ length: daysInMonth }, (_, i) => ({
+      label: `N${i + 1}`,
+      dayNumber: i + 1,
+      profit: 0,
+      revenue: 0,
+      cost: 0,
+      shipping: 0,
+    }));
+
+    for (const order of activeOrders) {
+      const d = order.orderDate ? new Date(order.orderDate) : new Date((order as any).createdAt || now);
+      const dayNum = d.getDate();
+      const slot = monthDays.find((s) => s.dayNumber === dayNum);
+      if (slot) {
+        const rev = order.totalAmount || 0;
+        const ship = order.shippingFee || 0;
+        const cost = order.costPrice || 0;
+        slot.revenue += rev;
+        slot.shipping += ship;
+        slot.cost += cost;
+        slot.profit += rev - ship - cost;
+      }
+    }
+
+    return monthDays.map((d) => ({
+      label: d.label,
+      revenue: d.revenue,
+      cost: d.cost,
+      shipping: d.shipping,
+      profit: d.profit,
+    }));
+  }
+
+  if (period === 'year') {
+    // 12 tháng trong năm: Tháng 1 -> Tháng 12
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      label: `Tháng ${i + 1}`,
+      monthIndex: i,
+      profit: 0,
+      revenue: 0,
+      cost: 0,
+      shipping: 0,
+    }));
+
+    for (const order of activeOrders) {
+      const d = order.orderDate ? new Date(order.orderDate) : new Date((order as any).createdAt || now);
+      const m = d.getMonth();
+      const slot = months.find((s) => s.monthIndex === m);
+      if (slot) {
+        const rev = order.totalAmount || 0;
+        const ship = order.shippingFee || 0;
+        const cost = order.costPrice || 0;
+        slot.revenue += rev;
+        slot.shipping += ship;
+        slot.cost += cost;
+        slot.profit += rev - ship - cost;
+      }
+    }
+
+    return months.map((m) => ({
+      label: m.label,
+      revenue: m.revenue,
+      cost: m.cost,
+      shipping: m.shipping,
+      profit: m.profit,
+    }));
+  }
+
+  // Mặc định (all / custom): 6 tháng gần nhất
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return {
+      label: `T${d.getMonth() + 1}/${d.getFullYear()}`,
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      profit: 0,
+      revenue: 0,
+      cost: 0,
+      shipping: 0,
+    };
+  });
+
+  for (const order of activeOrders) {
+    const d = order.orderDate ? new Date(order.orderDate) : new Date((order as any).createdAt || now);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const slot = last6Months.find((s) => s.year === y && s.month === m);
+    if (slot) {
+      const rev = order.totalAmount || 0;
+      const ship = order.shippingFee || 0;
+      const cost = order.costPrice || 0;
+      slot.revenue += rev;
+      slot.shipping += ship;
+      slot.cost += cost;
+      slot.profit += rev - ship - cost;
+    }
+  }
+
+  return last6Months.map((m) => ({
+    label: m.label,
+    revenue: m.revenue,
+    cost: m.cost,
+    shipping: m.shipping,
+    profit: m.profit,
+  }));
+}
+
 import { AppCacheService } from '../../common/cache/app-cache.service';
 
 @Injectable()
@@ -147,6 +334,9 @@ export class OrdersService {
         const inProgressCount = orderedCount + vnWarehouseCount + atHomeCount;
         const completionRate = totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
 
+        // Tính timeline lợi nhuận theo kỳ (hôm nay theo giờ, tuần theo ngày, tháng theo ngày, năm theo tháng)
+        const timeline = buildProfitTimeline(orders, query?.period || 'all');
+
         return {
           totalOrders,
           totalRevenue,       // Tổng doanh thu
@@ -165,6 +355,7 @@ export class OrdersService {
           cancelledOrders,
           completionRate,
           period: query?.period || 'all',
+          timeline,
         };
       },
       30, // TTL 30 giây
