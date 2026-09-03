@@ -88,16 +88,16 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Toggle Show/Hide Amount Button (Ẩn trên mobile) */}
+        {/* Toggle Show/Hide Amount Button (Hiển thị cả trên mobile & desktop) */}
         <button
           onClick={toggleShowAmount}
-          className="hidden sm:flex p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors items-center gap-1.5 cursor-pointer"
+          className="flex p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors items-center justify-center cursor-pointer"
           title={showAmount ? 'Ẩn số tiền' : 'Hiển thị số tiền'}
         >
           {showAmount ? (
-            <Eye className="w-5 h-5 text-emerald-500" />
+            <Eye className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-emerald-500" />
           ) : (
-            <EyeOff className="w-5 h-5 text-slate-400" />
+            <EyeOff className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-slate-400" />
           )}
         </button>
 
