@@ -1,5 +1,6 @@
 export type OrderStatusType =
   | 'ORDERED'
+  | 'CN_WAREHOUSE'
   | 'VN_WAREHOUSE'
   | 'AT_HOME'
   | 'COMPLETED'
@@ -14,7 +15,7 @@ export interface OrderCustomer {
   amount?: number; // Tổng tiền khách này cần trả
   paidAmount?: number; // Tiền khách này đã thanh toán
   orderDate?: string; // Ngày lên đơn
-  status?: OrderStatusType; // Trạng thái: Đã đặt → Kho Việt Nam → Nhà → Thành công → Đã hủy
+  status?: OrderStatusType; // Trạng thái: Đã đặt → Kho Trung → Kho Việt → Nhà → Thành công → Đã hủy
   paymentStatus?: PaymentStatusType; // Thanh toán
   note?: string; // Ghi chú
 }
@@ -51,6 +52,7 @@ export interface OrderStats {
   totalPaid: number;          // Thực thu đã thanh toán
   totalRemaining: number;     // Công nợ còn lại
   orderedCount: number;
+  cnWarehouseCount: number;
   vnWarehouseCount: number;
   atHomeCount: number;
   inProgressCount: number;
@@ -96,13 +98,21 @@ export const ORDER_STATUS_CONFIG: Record<
     border: 'border-blue-200 dark:border-blue-500/20',
     step: 1,
   },
+  CN_WAREHOUSE: {
+    label: 'Kho Trung',
+    color: '#06B6D4',
+    bg: 'bg-cyan-50 dark:bg-cyan-500/10',
+    text: 'text-cyan-600 dark:text-cyan-400',
+    border: 'border-cyan-200 dark:border-cyan-500/20',
+    step: 2,
+  },
   VN_WAREHOUSE: {
-    label: 'Kho Việt Nam',
+    label: 'Kho Việt',
     color: '#F97316',
     bg: 'bg-orange-50 dark:bg-orange-500/10',
     text: 'text-orange-600 dark:text-orange-400',
     border: 'border-orange-200 dark:border-orange-500/20',
-    step: 2,
+    step: 3,
   },
   AT_HOME: {
     label: 'Nhà',
@@ -110,7 +120,7 @@ export const ORDER_STATUS_CONFIG: Record<
     bg: 'bg-purple-50 dark:bg-purple-500/10',
     text: 'text-purple-600 dark:text-purple-400',
     border: 'border-purple-200 dark:border-purple-500/20',
-    step: 3,
+    step: 4,
   },
   COMPLETED: {
     label: 'Thành công',
@@ -118,7 +128,7 @@ export const ORDER_STATUS_CONFIG: Record<
     bg: 'bg-emerald-50 dark:bg-emerald-500/10',
     text: 'text-emerald-600 dark:text-emerald-400',
     border: 'border-emerald-200 dark:border-emerald-500/20',
-    step: 4,
+    step: 5,
   },
   CANCELLED: {
     label: 'Đã hủy',

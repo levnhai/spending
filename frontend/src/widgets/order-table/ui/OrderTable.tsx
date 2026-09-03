@@ -15,7 +15,9 @@ import {
 import { Order, OrderStatusType, orderApi, ORDER_STATUS_CONFIG } from '@/entities/order';
 import { OrderStatusDropdown } from '@/features/order-management';
 import { AmountDisplay } from '@/shared/ui/AmountDisplay';
+import { ConfirmModal } from '@/shared/ui/ConfirmModal';
 import { formatVND } from '@/shared/lib/formatters';
+import { useUserStore } from '@/entities/user/useUserStore';
 
 interface OrderTableProps {
   orders: Order[];
@@ -32,20 +34,25 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   onDeleted,
   onStatusChanged,
 }) => {
+  const showAmount = useUserStore((s) => s.showAmount);
+  const renderAmount = (val: number) => (showAmount ? formatVND(val) : '••••••••');
+
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [activeCustomersModal, setActiveCustomersModal] = useState<Order | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<{ id: string; code: string; title?: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async (id: string, code: string) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa đơn hàng ${code}?`)) return;
-    setDeletingId(id);
+  const handleConfirmDelete = async () => {
+    if (!orderToDelete) return;
+    setIsDeleting(true);
     try {
-      await orderApi.delete(id);
+      await orderApi.delete(orderToDelete.id);
+      setOrderToDelete(null);
       onDeleted();
     } catch (e) {
       alert('Không thể xóa đơn hàng');
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -229,11 +236,11 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                       />
                       <div className="text-[11px] space-x-1.5 mt-0.5">
                         <span className="text-emerald-500 font-semibold">
-                          Đã thu: {formatVND(orderPaid)}
+                          Đã thu: {renderAmount(orderPaid)}
                         </span>
                         {orderRemaining > 0 && (
                           <span className="text-amber-500 font-semibold">
-                            | Nợ: {formatVND(orderRemaining)}
+                            | Nợ: {renderAmount(orderRemaining)}
                           </span>
                         )}
                       </div>
@@ -259,9 +266,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(order._id, order.orderCode)}
-                          disabled={deletingId === order._id}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 disabled:opacity-50 transition-colors"
+                          onClick={() => setOrderToDelete({ id: order._id, code: order.orderCode, title: order.title })}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                           title="Xóa đơn hàng"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -378,12 +384,15 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               <div className="flex items-center justify-between pt-1">
                 <div>
                   <div className="font-extrabold text-base text-slate-900 dark:text-white">
-                    {formatVND(orderTotal)}
+                    <AmountDisplay
+                      amount={orderTotal}
+                      className="font-extrabold text-base text-slate-900 dark:text-white"
+                    />
                   </div>
                   <div className="text-[11px] text-slate-400 space-x-1">
-                    <span className="text-emerald-500 font-semibold">Đã thu: {formatVND(orderPaid)}</span>
+                    <span className="text-emerald-500 font-semibold">Đã thu: {renderAmount(orderPaid)}</span>
                     {orderRemaining > 0 && (
-                      <span className="text-amber-500 font-semibold">| Nợ: {formatVND(orderRemaining)}</span>
+                      <span className="text-amber-500 font-semibold">| Nợ: {renderAmount(orderRemaining)}</span>
                     )}
                   </div>
                 </div>
@@ -396,8 +405,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     Sửa
                   </button>
                   <button
-                    onClick={() => handleDelete(order._id, order.orderCode)}
-                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                    onClick={() => setOrderToDelete({ id: order._id, code: order.orderCode, title: order.title })}
+                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -508,16 +517,16 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 grid grid-cols-3 gap-2 text-center">
                       <div>
                         <span className="text-[10px] text-slate-400 block uppercase font-bold">Tổng tiền</span>
-                        <span className="font-extrabold text-slate-900 dark:text-white">{formatVND(cAmount)}</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white">{renderAmount(cAmount)}</span>
                       </div>
                       <div className="border-x border-slate-100 dark:border-slate-800">
                         <span className="text-[10px] text-slate-400 block uppercase font-bold">Đã trả</span>
-                        <span className="font-extrabold text-emerald-500">{formatVND(cPaid)}</span>
+                        <span className="font-extrabold text-emerald-500">{renderAmount(cPaid)}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block uppercase font-bold">Còn nợ</span>
                         <span className={`font-extrabold ${cRemaining > 0 ? 'text-amber-500' : 'text-slate-400'}`}>
-                          {formatVND(cRemaining)}
+                          {renderAmount(cRemaining)}
                         </span>
                       </div>
                     </div>
@@ -538,15 +547,15 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   Tổng đơn ({activeCustomersModal.customers?.length || 1} khách):
                 </span>
                 <span className="text-base font-extrabold text-slate-900 dark:text-white ml-2">
-                  {formatVND(activeCustomersModal.totalAmount || 0)}
+                  {renderAmount(activeCustomersModal.totalAmount || 0)}
                 </span>
               </div>
 
               <div className="text-right text-xs">
-                <span className="text-emerald-500 font-bold">Đã thu: {formatVND(activeCustomersModal.paidAmount || 0)}</span>
+                <span className="text-emerald-500 font-bold">Đã thu: {renderAmount(activeCustomersModal.paidAmount || 0)}</span>
                 {Math.max(0, (activeCustomersModal.totalAmount || 0) - (activeCustomersModal.paidAmount || 0)) > 0 && (
                   <span className="text-amber-500 font-bold ml-2">
-                    | Còn nợ: {formatVND((activeCustomersModal.totalAmount || 0) - (activeCustomersModal.paidAmount || 0))}
+                    | Còn nợ: {renderAmount((activeCustomersModal.totalAmount || 0) - (activeCustomersModal.paidAmount || 0))}
                   </span>
                 )}
               </div>
@@ -579,6 +588,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           </div>
         </div>
       )}
+      {/* DELETE CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={Boolean(orderToDelete)}
+        onClose={() => {
+          if (!isDeleting) setOrderToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa đơn hàng"
+        message={
+          <div>
+            Bạn có chắc chắn muốn xóa đơn hàng{' '}
+            <strong className="text-rose-500 font-bold">
+              {orderToDelete?.code}
+            </strong>
+            {orderToDelete?.title ? ` (${orderToDelete.title})` : ''}? Thao tác này không thể hoàn tác.
+          </div>
+        }
+        confirmText="Xóa đơn hàng"
+        cancelText="Hủy bỏ"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </>
   );
 };

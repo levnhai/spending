@@ -326,12 +326,13 @@ export class OrdersService {
 
         // Trạng thái đơn
         const orderedCount = orders.filter((o) => o.status === OrderStatus.ORDERED).length;
+        const cnWarehouseCount = orders.filter((o) => o.status === OrderStatus.CN_WAREHOUSE).length;
         const vnWarehouseCount = orders.filter((o) => o.status === OrderStatus.VN_WAREHOUSE).length;
         const atHomeCount = orders.filter((o) => o.status === OrderStatus.AT_HOME).length;
         const completedOrders = orders.filter((o) => o.status === OrderStatus.COMPLETED).length;
         const cancelledOrders = orders.filter((o) => o.status === OrderStatus.CANCELLED).length;
 
-        const inProgressCount = orderedCount + vnWarehouseCount + atHomeCount;
+        const inProgressCount = orderedCount + cnWarehouseCount + vnWarehouseCount + atHomeCount;
         const completionRate = totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
 
         // Tính timeline lợi nhuận theo kỳ (hôm nay theo giờ, tuần theo ngày, tháng theo ngày, năm theo tháng)
@@ -348,6 +349,7 @@ export class OrdersService {
           totalPaid,          // Thực thu đã thanh toán
           totalRemaining,     // Công nợ còn lại
           orderedCount,
+          cnWarehouseCount,
           vnWarehouseCount,
           atHomeCount,
           inProgressCount,

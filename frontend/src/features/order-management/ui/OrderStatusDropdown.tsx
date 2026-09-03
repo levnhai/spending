@@ -30,7 +30,7 @@ export const OrderStatusDropdown: React.FC<OrderStatusDropdownProps> = ({
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const menuWidth = 176; // 11rem (w-44)
-    const menuHeight = 210; // Chiều cao ước tính của menu
+    const menuHeight = 245; // Chiều cao ước tính của menu (6 mục trạng thái)
 
     const spaceBelow = window.innerHeight - rect.bottom;
     const isAbove = spaceBelow < menuHeight && rect.top > menuHeight;

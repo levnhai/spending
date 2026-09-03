@@ -5,7 +5,8 @@ export type OrderDocument = Order & Document;
 
 export enum OrderStatus {
   ORDERED = 'ORDERED',             // Đã đặt
-  VN_WAREHOUSE = 'VN_WAREHOUSE',   // Kho Việt Nam
+  CN_WAREHOUSE = 'CN_WAREHOUSE',   // Kho Trung
+  VN_WAREHOUSE = 'VN_WAREHOUSE',   // Kho Việt
   AT_HOME = 'AT_HOME',             // Nhà
   COMPLETED = 'COMPLETED',         // Thành công
   CANCELLED = 'CANCELLED',         // Đã hủy
@@ -38,7 +39,7 @@ export class OrderCustomer {
   orderDate: Date; // Ngày lên đơn
 
   @Prop({ default: OrderStatus.ORDERED, enum: OrderStatus })
-  status: OrderStatus; // Trạng thái đơn: Đã đặt → Kho Việt Nam → Nhà → Thành công → Đã hủy
+  status: OrderStatus; // Trạng thái đơn: Đã đặt → Kho Trung → Kho Việt → Nhà → Thành công → Đã hủy
 
   @Prop({ default: PaymentStatus.UNPAID, enum: PaymentStatus })
   paymentStatus: PaymentStatus; // Trạng thái thanh toán

@@ -17,7 +17,8 @@ import { OrderTable } from '@/widgets/order-table';
 const STATUS_FILTERS = [
   { id: 'ALL', label: 'Tất cả trạng thái', color: 'text-slate-400', dot: 'bg-slate-400' },
   { id: 'ORDERED', label: 'Đã đặt', color: 'text-blue-500', dot: 'bg-blue-500' },
-  { id: 'VN_WAREHOUSE', label: 'Kho Việt Nam', color: 'text-orange-500', dot: 'bg-orange-500' },
+  { id: 'CN_WAREHOUSE', label: 'Kho Trung', color: 'text-cyan-500', dot: 'bg-cyan-500' },
+  { id: 'VN_WAREHOUSE', label: 'Kho Việt', color: 'text-orange-500', dot: 'bg-orange-500' },
   { id: 'AT_HOME', label: 'Nhà', color: 'text-purple-500', dot: 'bg-purple-500' },
   { id: 'COMPLETED', label: 'Thành công', color: 'text-emerald-500', dot: 'bg-emerald-500' },
   { id: 'CANCELLED', label: 'Đã hủy', color: 'text-rose-500', dot: 'bg-rose-500' },

@@ -93,7 +93,12 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
       color: ORDER_STATUS_CONFIG.ORDERED.color,
     },
     {
-      name: 'Kho Việt Nam',
+      name: 'Kho Trung',
+      value: stats?.cnWarehouseCount || 0,
+      color: ORDER_STATUS_CONFIG.CN_WAREHOUSE.color,
+    },
+    {
+      name: 'Kho Việt',
       value: stats?.vnWarehouseCount || 0,
       color: ORDER_STATUS_CONFIG.VN_WAREHOUSE.color,
     },
