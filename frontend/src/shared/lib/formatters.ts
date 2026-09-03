@@ -9,14 +9,14 @@ export function formatVND(amount: number, isVisible: boolean = true): string {
 
 export function formatNumberWithSpaces(val: string | number): string {
   if (val === undefined || val === null || val === '') return '';
-  const raw = String(val).replace(/\D/g, '');
+  const raw = String(val).replace(/\D/g, '').slice(0, 14);
   if (!raw) return '';
   return raw.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
 export function parseFormattedNumber(val: string | number): number {
   if (!val) return 0;
-  const raw = String(val).replace(/\D/g, '');
+  const raw = String(val).replace(/\D/g, '').slice(0, 14);
   return raw ? Number(raw) : 0;
 }
 

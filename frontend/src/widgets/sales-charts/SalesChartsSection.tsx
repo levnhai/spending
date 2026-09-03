@@ -256,7 +256,7 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
                   radius={[6, 6, 0, 0]}
                   maxBarSize={32}
                 />
-                {/* Cột Lợi Nhuận Chính */}
+                {/*feat: implement order management system with status tracking and editing capabilities Cột Lợi Nhuận Chính */}
                 <Bar
                   dataKey="profit"
                   name="Lợi nhuận"
