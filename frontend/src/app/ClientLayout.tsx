@@ -10,6 +10,7 @@ import { AuthPageView } from '@/views/auth/AuthPageView';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
 import { AddEditOrderModal } from '@/features/order-management';
 import { PwaRegister } from '@/shared/ui/PwaRegister';
+import { DevToolsGuard } from '@/shared/ui/DevToolsGuard';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -52,7 +53,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!token || !user) {
-    return <AuthPageView onSuccess={() => {}} />;
+    return (
+      <>
+        <DevToolsGuard />
+        <AuthPageView onSuccess={() => {}} />
+      </>
+    );
   }
 
   const handleOpenBottomAdd = () => {
@@ -65,6 +71,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <DevToolsGuard />
       <PwaRegister />
       <Sidebar />
 
