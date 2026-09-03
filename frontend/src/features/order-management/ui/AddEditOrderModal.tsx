@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Plus,
@@ -14,6 +14,8 @@ import {
   Edit2,
   CheckCircle,
   Clock,
+  UploadCloud,
+  Loader2,
 } from 'lucide-react';
 import {
   Order,
@@ -25,6 +27,7 @@ import {
   orderApi,
 } from '@/entities/order';
 import { formatVND, formatNumberWithSpaces, parseFormattedNumber } from '@/shared/lib/formatters';
+import { compressImageFile } from '@/shared/lib/imageUtils';
 
 interface AddEditOrderModalProps {
   isOpen: boolean;
@@ -56,6 +59,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const [title, setTitle] = useState('');
   const [orderCode, setOrderCode] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [costPriceStr, setCostPriceStr] = useState('');
   const [shippingFeeStr, setShippingFeeStr] = useState('');
   const [customers, setCustomers] = useState<OrderCustomer[]>([]);
@@ -69,6 +76,22 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const [custAmountStr, setCustAmountStr] = useState('');
   const [custPaidAmountStr, setCustPaidAmountStr] = useState('');
   const [custError, setCustError] = useState('');
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressingImage(true);
+    try {
+      const compressedDataUrl = await compressImageFile(file, 800, 800, 0.75);
+      setImageUrl(compressedDataUrl);
+    } catch (err: any) {
+      alert(err.message || 'Không thể xử lý hình ảnh');
+    } finally {
+      setIsCompressingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     if (orderToEdit) {
@@ -343,9 +366,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 <input
                   type="text"
                   inputMode="numeric"
-                  maxLength={18}
+                  maxLength={14}
                   value={costPriceStr}
-                  onChange={(e) => setCostPriceStr(formatNumberWithSpaces(e.target.value))}
+                  onChange={(e) => setCostPriceStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
                   placeholder="0"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
@@ -367,9 +390,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 <input
                   type="text"
                   inputMode="numeric"
-                  maxLength={18}
+                  maxLength={14}
                   value={shippingFeeStr}
-                  onChange={(e) => setShippingFeeStr(formatNumberWithSpaces(e.target.value))}
+                  onChange={(e) => setShippingFeeStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
                   placeholder="0"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
@@ -377,33 +400,137 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               </div>
             </div>
 
-            {/* Image URL & Preview */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                Hình ảnh sản phẩm / Chứng từ (URL)
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <ImageIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-                  />
+            {/* Hình ảnh sản phẩm / Chứng từ (Upload hoặc Dán URL) */}
+            <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Hình ảnh sản phẩm / Chứng từ</span>
+                </label>
+                <div className="flex items-center gap-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setImageInputMode('upload')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      imageInputMode === 'upload'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+                    }`}
+                  >
+                    Tải ảnh lên
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageInputMode('url')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      imageInputMode === 'url'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+                    }`}
+                  >
+                    Dán URL
+                  </button>
                 </div>
               </div>
-              {imageUrl && (
-                <div className="mt-2 w-20 h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 relative bg-slate-100 dark:bg-slate-800">
-                  <img
-                    src={imageUrl}
-                    alt="Xem trước"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
+
+              {/* Mode 1: Upload File Ảnh */}
+              {imageInputMode === 'upload' ? (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
                   />
+                  {!imageUrl ? (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-white/50 dark:bg-slate-900/50 space-y-1.5"
+                    >
+                      <div className="w-9 h-9 mx-auto rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                        {isCompressingImage ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <UploadCloud className="w-5 h-5" />
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                        {isCompressingImage ? 'Đang nén và tối ưu ảnh...' : 'Nhấn để chọn ảnh từ máy tính / điện thoại'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
+                        <img
+                          src={imageUrl}
+                          alt="Xem trước"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Đã tải & nén ảnh tối ưu</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                          Đã lưu định dạng WebP siêu nhẹ
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-[11px] font-bold text-blue-500 hover:underline cursor-pointer"
+                          >
+                            Đổi ảnh khác
+                          </button>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setImageUrl('')}
+                            className="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer"
+                          >
+                            Xóa ảnh
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Mode 2: Nhập Link URL */
+                <div className="space-y-2">
+                  <div className="relative">
+                    <ImageIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    />
+                  </div>
+                  {imageUrl && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 relative bg-slate-100 dark:bg-slate-800 shrink-0">
+                        <img
+                          src={imageUrl}
+                          alt="Xem trước"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl('')}
+                        className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer"
+                      >
+                        Xóa ảnh
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -658,14 +785,22 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               {/* Phân tách: Tổng tiền & Tiền đã thanh toán */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Tổng tiền cần thanh toán (VNĐ) <span className="text-rose-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Tổng tiền cần thu <span className="text-rose-500">*</span>
+                    </label>
+                    {parseFormattedNumber(custAmountStr) > 0 && (
+                      <span className="text-[11px] font-extrabold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-md">
+                        {formatVND(parseFormattedNumber(custAmountStr))}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     inputMode="numeric"
+                    maxLength={14}
                     value={custAmountStr}
-                    onChange={(e) => setCustAmountStr(formatNumberWithSpaces(e.target.value))}
+                    onChange={(e) => setCustAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
                     placeholder="0"
                     required
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
@@ -673,14 +808,22 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Tiền khách đã thanh toán (VNĐ)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Tiền khách đã trả
+                    </label>
+                    {parseFormattedNumber(custPaidAmountStr) > 0 && (
+                      <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                        {formatVND(parseFormattedNumber(custPaidAmountStr))}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     inputMode="numeric"
+                    maxLength={14}
                     value={custPaidAmountStr}
-                    onChange={(e) => setCustPaidAmountStr(formatNumberWithSpaces(e.target.value))}
+                    onChange={(e) => setCustPaidAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
                     placeholder="0"
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
                   />
