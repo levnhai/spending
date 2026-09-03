@@ -1,0 +1,1 @@
+export { OrdersPageView } from './OrdersPageView';

@@ -1,22 +1,45 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/widgets/navigation/Sidebar';
 import { BottomNav } from '@/widgets/navigation/BottomNav';
 import { useUserStore } from '@/entities/user/useUserStore';
+import { APP_NAVIGATION_ITEMS } from '@/shared/config/navigation.config';
 import { AuthPageView } from '@/views/auth/AuthPageView';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
 import { PwaRegister } from '@/shared/ui/PwaRegister';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { user, token, initAuth } = useUserStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, token, role, initAuth } = useUserStore();
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+
+  const userRole = role || user?.role || 'PERSONAL';
 
   useEffect(() => {
     initAuth();
     setMounted(true);
   }, [initAuth]);
+
+  // Route Guard: Tự động chuyển về /dashboard nếu truy cập trang không thuộc Role hiện tại
+  useEffect(() => {
+    if (!mounted || !token || !user) return;
+
+    const currentItem = APP_NAVIGATION_ITEMS.find((item) => {
+      if (item.href === '/dashboard') return pathname === '/dashboard';
+      return pathname.startsWith(item.href);
+    });
+
+    if (currentItem && currentItem.allowedRoles) {
+      if (!currentItem.allowedRoles.includes(userRole)) {
+        // Trang không thuộc role hiện tại -> Tự động chuyển về Dashboard
+        router.replace('/dashboard');
+      }
+    }
+  }, [pathname, userRole, mounted, token, user, router]);
 
   if (!mounted) {
     return (

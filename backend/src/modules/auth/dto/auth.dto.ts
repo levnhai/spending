@@ -1,19 +1,18 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsString, IsArray, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UserRole } from '../../../schemas/user.schema';
 
 export class RegisterDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
-  @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
 
-  @ApiProperty({ example: '123456' })
-  @IsString()
-  @MinLength(6, { message: 'Mật khẩu phải từ 6 ký tự trở lên' })
+  @ApiProperty({ example: 'password123', minLength: 6 })
+  @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
+  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
   password: string;
 
   @ApiProperty({ example: 'Nguyễn Văn A' })
-  @IsString()
   @IsNotEmpty({ message: 'Họ tên không được để trống' })
   fullName: string;
 }
@@ -21,12 +20,10 @@ export class RegisterDto {
 export class LoginDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
-  @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '123456' })
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({ example: 'password123' })
+  @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
   password: string;
 }
 
@@ -36,30 +33,40 @@ export class UpdateProfileDto {
   @IsString()
   fullName?: string;
 
-  @ApiPropertyOptional({ example: 'https://avatar.com/1.png' })
+  @ApiPropertyOptional({ example: 'https://example.com/avatar.png' })
   @IsOptional()
   @IsString()
-  avatar?: string;
+  avatarUrl?: string;
 
   @ApiPropertyOptional({ example: 'VND' })
   @IsOptional()
   @IsString()
   currency?: string;
 
-  @ApiPropertyOptional({ example: 'dark' })
+  @ApiPropertyOptional({ example: 'vi' })
   @IsOptional()
   @IsString()
-  theme?: string;
+  language?: string;
+
+  @ApiPropertyOptional({ enum: UserRole, example: UserRole.PERSONAL })
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
+  @ApiPropertyOptional({ example: ['/savings', '/bills'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hiddenMenus?: string[];
 }
 
 export class ChangePasswordDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({ example: 'oldPassword123' })
+  @IsNotEmpty({ message: 'Mật khẩu cũ không được để trống' })
   oldPassword: string;
 
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ example: 'newPassword123', minLength: 6 })
+  @IsNotEmpty({ message: 'Mật khẩu mới không được để trống' })
   @MinLength(6, { message: 'Mật khẩu mới phải có ít nhất 6 ký tự' })
   newPassword: string;
 }

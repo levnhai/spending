@@ -2,18 +2,44 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, Bell, Plus, User as UserIcon, LogOut, ChevronDown, Wallet, Target, BarChart3, Tag, Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  Sun,
+  Moon,
+  Bell,
+  Plus,
+  User as UserIcon,
+  LogOut,
+  ChevronDown,
+  Wallet,
+  Target,
+  BarChart3,
+  Tag,
+  Eye,
+  EyeOff,
+  SlidersHorizontal,
+  ShoppingBag,
+  ArrowLeftRight,
+} from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
 interface HeaderProps {
   title: string;
   onOpenQuickAdd?: () => void;
+  onOpenQuickAddOrder?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, onOpenQuickAdd }) => {
-  const { user, theme, toggleTheme, logout, showAmount, toggleShowAmount } = useUserStore();
+export const Header: React.FC<HeaderProps> = ({
+  title,
+  onOpenQuickAdd,
+  onOpenQuickAddOrder,
+}) => {
+  const router = useRouter();
+  const { user, theme, toggleTheme, logout, showAmount, toggleShowAmount, role, switchRole } = useUserStore();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const userRole = role || user?.role || 'PERSONAL';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -25,6 +51,12 @@ export const Header: React.FC<HeaderProps> = ({ title, onOpenQuickAdd }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleToggleRole = () => {
+    const nextRole = userRole === 'PERSONAL' ? 'SALES' : 'PERSONAL';
+    switchRole(nextRole);
+    router.push('/dashboard');
+  };
+
   return (
     <header className="h-16 px-4 md:px-8 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between transition-colors duration-300">
       <div>
@@ -33,12 +65,23 @@ export const Header: React.FC<HeaderProps> = ({ title, onOpenQuickAdd }) => {
         </h1>
       </div>
 
-      <div className="flex items-center gap-2.5 md:gap-3">
-        {/* Desktop Quick Add Button */}
-        {onOpenQuickAdd && (
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Nút Thêm Đơn Hàng (Role Bán Hàng) */}
+        {userRole === 'SALES' && onOpenQuickAddOrder && (
+          <button
+            onClick={onOpenQuickAddOrder}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm đơn hàng</span>
+          </button>
+        )}
+
+        {/* Nút Thêm Giao Dịch (Role Cá Nhân) */}
+        {userRole === 'PERSONAL' && onOpenQuickAdd && (
           <button
             onClick={onOpenQuickAdd}
-            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm giao dịch</span>
@@ -98,62 +141,72 @@ export const Header: React.FC<HeaderProps> = ({ title, onOpenQuickAdd }) => {
                 </div>
               </div>
 
-              {/* Navigation Items */}
-              <Link
-                href="/wallets"
-                onClick={() => setIsUserMenuOpen(false)}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
-              >
-                <Wallet className="w-4 h-4 text-indigo-500" />
-                <span>Ví & Nguồn tiền</span>
-              </Link>
-
-              <Link
-                href="/savings"
-                onClick={() => setIsUserMenuOpen(false)}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
-              >
-                <Target className="w-4 h-4 text-cyan-500" />
-                <span>Mục tiêu tiết kiệm</span>
-              </Link>
-
-              <Link
-                href="/reports"
-                onClick={() => setIsUserMenuOpen(false)}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
-              >
-                <BarChart3 className="w-4 h-4 text-emerald-500" />
-                <span>Báo cáo & Thống kê</span>
-              </Link>
-
-              <Link
-                href="/categories"
-                onClick={() => setIsUserMenuOpen(false)}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
-              >
-                <Tag className="w-4 h-4 text-purple-500" />
-                <span>Danh mục thu / chi</span>
-              </Link>
-
-              <div className="border-t border-slate-100 dark:border-slate-800 my-1"></div>
-
-              {/* Toggle Show Amount */}
+              {/* Chuyển vai trò trong Menu Dropdown */}
               <button
-                onClick={toggleShowAmount}
+                onClick={() => {
+                  handleToggleRole();
+                  setIsUserMenuOpen(false);
+                }}
                 className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center justify-between text-sm font-semibold transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  {showAmount ? (
-                    <Eye className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <EyeOff className="w-4 h-4 text-slate-400" />
-                  )}
-                  <span>Số tiền</span>
+                  <ArrowLeftRight className="w-4 h-4 text-indigo-500" />
+                  <span>Chế độ sử dụng</span>
                 </div>
-                <span className="text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                  {showAmount ? 'Hiện' : 'Ẩn'}
+                <span
+                  className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${
+                    userRole === 'SALES'
+                      ? 'bg-orange-500/10 text-orange-500'
+                      : 'bg-emerald-500/10 text-emerald-500'
+                  }`}
+                >
+                  {userRole === 'SALES' ? 'Bán Hàng' : 'Cá Nhân'}
                 </span>
               </button>
+
+              {userRole === 'PERSONAL' && (
+                <>
+                  <Link
+                    href="/wallets"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+                  >
+                    <Wallet className="w-4 h-4 text-indigo-500" />
+                    <span>Ví & Nguồn tiền</span>
+                  </Link>
+
+                  <Link
+                    href="/savings"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+                  >
+                    <Target className="w-4 h-4 text-cyan-500" />
+                    <span>Mục tiêu tiết kiệm</span>
+                  </Link>
+
+                  <Link
+                    href="/reports"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+                  >
+                    <BarChart3 className="w-4 h-4 text-emerald-500" />
+                    <span>Báo cáo & Thống kê</span>
+                  </Link>
+                </>
+              )}
+
+              {userRole === 'SALES' && (
+                <Link
+                  href="/orders"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4 text-orange-500" />
+                  <span>Quản Lý Đơn Hàng</span>
+                </Link>
+              )}
+
+              <div className="border-t border-slate-100 dark:border-slate-800 my-1"></div>
 
               {/* Toggle Dark/Light Mode */}
               <button
@@ -172,6 +225,16 @@ export const Header: React.FC<HeaderProps> = ({ title, onOpenQuickAdd }) => {
                   {theme === 'dark' ? 'Dark' : 'Light'}
                 </span>
               </button>
+
+              {/* Settings Page Link */}
+              <Link
+                href="/settings"
+                onClick={() => setIsUserMenuOpen(false)}
+                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Cài đặt hệ thống</span>
+              </Link>
 
               <div className="border-t border-slate-100 dark:border-slate-800 my-1"></div>
 

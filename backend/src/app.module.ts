@@ -18,6 +18,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { NotesModule } from './modules/notes/notes.module';
 import { DebtsModule } from './modules/debts/debts.module';
 import { MonthlyPlansModule } from './modules/monthly-plans/monthly-plans.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { AppCacheModule } from './common/cache/app-cache.module';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { MonthlyPlansModule } from './modules/monthly-plans/monthly-plans.module
       isGlobal: true,
       envFilePath: '.env',
     }),
+    AppCacheModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -47,6 +50,7 @@ import { MonthlyPlansModule } from './modules/monthly-plans/monthly-plans.module
     NotesModule,
     DebtsModule,
     MonthlyPlansModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

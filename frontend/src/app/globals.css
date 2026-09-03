@@ -30,6 +30,26 @@ body {
   overflow-x: hidden;
 }
 
+/* Tự động chuyển con trỏ chuột thành pointer cho tất cả nút bấm và clickable elements */
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+a,
+select,
+input[type="checkbox"],
+input[type="radio"],
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+[disabled] {
+  cursor: not-allowed;
+}
+
 /* Glassmorphism utility */
 .glass-card {
   background: var(--bg-card);

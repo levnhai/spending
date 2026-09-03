@@ -28,6 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             className={`flex flex-col items-center justify-center w-14 py-1 text-[11px] font-medium transition-colors ${
               isActive ? 'text-emerald-500 font-semibold' : 'text-slate-500 dark:text-slate-400'
             }`}
@@ -56,6 +57,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             className={`flex flex-col items-center justify-center w-14 py-1 text-[11px] font-medium transition-colors ${
               isActive ? 'text-emerald-500 font-semibold' : 'text-slate-500 dark:text-slate-400'
             }`}

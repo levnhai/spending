@@ -1,122 +1,135 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User, UserDocument } from '../../schemas/user.schema';
-import { Wallet, WalletDocument, WalletType } from '../../schemas/wallet.schema';
-import { Category, CategoryDocument } from '../../schemas/category.schema';
-import { DEFAULT_CATEGORIES } from '../categories/default-categories';
-import { RegisterDto, LoginDto, ChangePasswordDto, UpdateProfileDto } from './dto/auth.dto';
+import { User, UserDocument, UserRole } from '../../schemas/user.schema';
+import { RegisterDto, LoginDto, UpdateProfileDto, ChangePasswordDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
-    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     private jwtService: JwtService,
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const { email, password, fullName } = registerDto;
-
-    const existingUser = await this.userModel.findOne({ email });
+    const existingUser = await this.userModel.findOne({ email: registerDto.email.toLowerCase() });
     if (existingUser) {
-      throw new BadRequestException('Email đã được sử dụng');
+      throw new ConflictException('Email này đã được đăng ký');
     }
 
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const passwordHash = await bcrypt.hash(registerDto.password, salt);
 
-    const newUser = await this.userModel.create({
-      email,
+    const newUser = new this.userModel({
+      email: registerDto.email.toLowerCase(),
       passwordHash,
-      fullName,
+      fullName: registerDto.fullName,
+      role: UserRole.PERSONAL,
+      hiddenMenus: [],
     });
 
-    // Seed default Wallets
-    await this.walletModel.insertMany([
-      { userId: newUser._id, name: 'Tiền mặt', type: WalletType.CASH, initialBalance: 0, currentBalance: 0, color: '#10B981', icon: 'Banknote', isDefault: true },
-      { userId: newUser._id, name: 'Vietcombank', type: WalletType.BANK, initialBalance: 0, currentBalance: 0, color: '#3B82F6', icon: 'Building', isDefault: false },
-      { userId: newUser._id, name: 'Ví Momo', type: WalletType.EWALLET, initialBalance: 0, currentBalance: 0, color: '#EC4899', icon: 'Wallet', isDefault: false },
-    ]);
-
-    // Seed default Categories
-    const categoriesToSeed = DEFAULT_CATEGORIES.map((cat) => ({
-      ...cat,
-      userId: newUser._id,
-    }));
-    await this.categoryModel.insertMany(categoriesToSeed);
-
-    const token = this.generateToken(newUser._id.toString(), newUser.email);
+    const savedUser = await newUser.save();
+    const token = this.generateToken(savedUser);
 
     return {
-      message: 'Đăng ký tài khoản thành công',
-      token,
       user: {
-        id: newUser._id,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        avatar: newUser.avatar,
-        currency: newUser.currency,
-        theme: newUser.theme,
+        id: savedUser._id,
+        email: savedUser.email,
+        fullName: savedUser.fullName,
+        currency: savedUser.currency,
+        language: savedUser.language,
+        avatarUrl: savedUser.avatarUrl,
+        role: savedUser.role || UserRole.PERSONAL,
+        hiddenMenus: savedUser.hiddenMenus || [],
       },
+      token,
     };
   }
 
   async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
-
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email: loginDto.email.toLowerCase() });
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(loginDto.password, user.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
-    const token = this.generateToken(user._id.toString(), user.email);
+    const token = this.generateToken(user);
 
     return {
-      message: 'Đăng nhập thành công',
-      token,
       user: {
         id: user._id,
         email: user.email,
         fullName: user.fullName,
-        avatar: user.avatar,
         currency: user.currency,
-        theme: user.theme,
+        language: user.language,
+        avatarUrl: user.avatarUrl,
+        role: user.role || UserRole.PERSONAL,
+        hiddenMenus: user.hiddenMenus || [],
       },
+      token,
     };
   }
 
   async getProfile(userId: string) {
     const user = await this.userModel.findById(userId).select('-passwordHash');
     if (!user) {
-      throw new BadRequestException('Không tìm thấy người dùng');
+      throw new UnauthorizedException('Người dùng không tồn tại');
     }
-    return user;
+    return {
+      id: user._id,
+      email: user.email,
+      fullName: user.fullName,
+      currency: user.currency,
+      language: user.language,
+      avatarUrl: user.avatarUrl,
+      role: user.role || UserRole.PERSONAL,
+      hiddenMenus: user.hiddenMenus || [],
+    };
   }
 
-  async updateProfile(userId: string, dto: UpdateProfileDto) {
-    const user = await this.userModel.findByIdAndUpdate(
-      userId,
-      { $set: dto },
-      { new: true },
-    ).select('-passwordHash');
-    return user;
+  async updateProfile(userId: string, updateDto: UpdateProfileDto) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    if (updateDto.fullName) user.fullName = updateDto.fullName;
+    if (updateDto.avatarUrl !== undefined) user.avatarUrl = updateDto.avatarUrl;
+    if (updateDto.currency) user.currency = updateDto.currency;
+    if (updateDto.language) user.language = updateDto.language;
+    if (updateDto.role) user.role = updateDto.role;
+    if (updateDto.hiddenMenus !== undefined) user.hiddenMenus = updateDto.hiddenMenus;
+
+    await user.save();
+
+    return {
+      id: user._id,
+      email: user.email,
+      fullName: user.fullName,
+      currency: user.currency,
+      language: user.language,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
+      hiddenMenus: user.hiddenMenus,
+    };
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.userModel.findById(userId);
-    if (!user) throw new BadRequestException('Người dùng không tồn tại');
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
 
     const isMatch = await bcrypt.compare(dto.oldPassword, user.passwordHash);
-    if (!isMatch) throw new BadRequestException('Mật khẩu cũ không chính xác');
+    if (!isMatch) {
+      throw new BadRequestException('Mật khẩu cũ không chính xác');
+    }
 
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(dto.newPassword, salt);
@@ -125,7 +138,8 @@ export class AuthService {
     return { message: 'Đổi mật khẩu thành công' };
   }
 
-  private generateToken(userId: string, email: string) {
-    return this.jwtService.sign({ sub: userId, email });
+  private generateToken(user: UserDocument) {
+    const payload = { sub: user._id, email: user.email, role: user.role || UserRole.PERSONAL };
+    return this.jwtService.sign(payload);
   }
 }

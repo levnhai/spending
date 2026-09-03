@@ -2,85 +2,140 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard,
-  Receipt,
   Wallet,
-  PieChart,
-  CalendarDays,
-  Target,
-  FileSpreadsheet,
-  LogOut,
-  TrendingUp,
-  Tag,
-  CheckSquare,
-  Calculator,
+  Settings as SettingsIcon,
+  ChevronRight,
+  Shield,
+  Sparkles,
+  User,
+  ShoppingBag,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { APP_NAVIGATION_ITEMS } from '@/shared/config/navigation.config';
 import { useUserStore } from '@/entities/user/useUserStore';
 
-const navItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Giao dịch', href: '/transactions', icon: Receipt },
-  { name: 'Ví & Tài khoản', href: '/wallets', icon: Wallet },
-  { name: 'Danh mục', href: '/categories', icon: Tag },
-  { name: 'Kế hoạch tháng', href: '/monthly-plan', icon: Calculator },
-  { name: 'Ngân sách', href: '/budgets', icon: PieChart },
-  { name: 'Hóa đơn định kỳ', href: '/bills', icon: CalendarDays },
-  { name: 'Mục tiêu tiết kiệm', href: '/savings', icon: Target },
-  { name: 'Ghi chú & Công việc', href: '/notes', icon: CheckSquare },
-  { name: 'Báo cáo & Export', href: '/reports', icon: FileSpreadsheet },
-];
-
 export const Sidebar: React.FC = () => {
+  const router = useRouter();
   const pathname = usePathname();
-  const logout = useUserStore((s) => s.logout);
+  const { user, hiddenMenus, role, switchRole } = useUserStore();
+
+  const userRole = role || user?.role || 'PERSONAL';
+
+  // Lọc menu: Thỏa mãn vai trò (allowedRoles) VÀ không nằm trong danh sách hiddenMenus
+  const visibleNavItems = APP_NAVIGATION_ITEMS.filter((item) => {
+    // 1. Kiểm tra Role
+    if (item.allowedRoles && !item.allowedRoles.includes(userRole)) {
+      return false;
+    }
+    // 2. Kiểm tra danh sách ẩn tùy chỉnh của người dùng
+    if (item.isMandatory) return true;
+    return !hiddenMenus?.includes(item.href);
+  });
+
+  const handleToggleRole = () => {
+    const nextRole = userRole === 'PERSONAL' ? 'SALES' : 'PERSONAL';
+    switchRole(nextRole);
+    router.push('/dashboard');
+  };
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-30 transition-colors duration-300">
+    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen sticky top-0 shrink-0 select-none z-30 transition-all duration-300">
       {/* Brand Header */}
-      <div className="flex items-center gap-3 px-6 h-16 border-b border-slate-200 dark:border-slate-800">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-          <TrendingUp className="w-6 h-6" />
-        </div>
-        <div>
-          <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">FinFlow</span>
-          <span className="text-[10px] block font-semibold text-emerald-500 uppercase tracking-widest">Expense Pro</span>
-        </div>
+      <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
+            {userRole === 'SALES' ? (
+              <ShoppingBag className="w-5 h-5 text-white" />
+            ) : (
+              <Wallet className="w-5 h-5 text-white" />
+            )}
+          </div>
+          <div>
+            <span className="font-extrabold text-lg text-white tracking-tight flex items-center gap-1.5">
+              Spending
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                PRO
+              </span>
+            </span>
+            <p className="text-[11px] text-slate-400 font-medium">
+              {userRole === 'SALES' ? 'Chế độ Bán Hàng' : 'Tài Chính Cá Nhân'}
+            </p>
+          </div>
+        </Link>
       </div>
 
-      {/* Nav Menu */}
-      <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                isActive
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+      {/* Role Switcher Button */}
+      <div className="px-4 pt-3 pb-1">
+        <button
+          type="button"
+          onClick={handleToggleRole}
+          className={`w-full p-2.5 rounded-2xl border flex items-center justify-between transition-all duration-200 ${
+            userRole === 'SALES'
+              ? 'bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/30 text-orange-400 hover:border-orange-500/50'
+              : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/30 text-emerald-400 hover:border-emerald-500/50'
+          }`}
+          title="Bấm để chuyển đổi giữa Cá Nhân và Bán Hàng"
+        >
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+                userRole === 'SALES'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-emerald-500 text-white'
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-              <span>{item.name}</span>
+              {userRole === 'SALES' ? <ShoppingBag className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+            </div>
+            <div className="text-left">
+              <span className="text-xs font-bold block text-white">
+                {userRole === 'SALES' ? 'Bán Hàng' : 'Cá Nhân'}
+              </span>
+              <span className="text-[10px] text-slate-400">Chuyển sang {userRole === 'SALES' ? 'Cá Nhân' : 'Bán Hàng'}</span>
+            </div>
+          </div>
+          <ArrowLeftRight className="w-3.5 h-3.5 opacity-60" />
+        </button>
+      </div>
+
+      {/* Navigation List */}
+      <nav className="flex-1 px-4 py-3 space-y-1.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+        <div className="px-3 py-1.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+          {userRole === 'SALES' ? 'Menu Bán Hàng' : 'Menu Cá Nhân'}
+        </div>
+
+        {visibleNavItems.map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            item.href === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname.startsWith(item.href);
+
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              prefetch={true}
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 group ${
+                isActive
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Icon
+                  className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                  }`}
+                />
+                <span className="truncate">{item.name}</span>
+              </div>
+              {isActive && <ChevronRight className="w-3.5 h-3.5 text-white shrink-0" />}
             </Link>
           );
         })}
-      </div>
-
-      {/* Logout button */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-medium text-sm text-rose-500 hover:bg-rose-500/10 transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          <span>Đăng xuất</span>
-        </button>
-      </div>
+      </nav>
     </aside>
   );
 };

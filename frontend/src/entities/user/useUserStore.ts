@@ -1,98 +1,200 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { api } from '@/shared/lib/api';
 
-interface User {
+export type UserRoleType = 'PERSONAL' | 'SALES';
+
+export interface User {
   id: string;
   email: string;
   fullName: string;
-  avatar?: string;
-  currency: string;
-  theme: string;
+  avatarUrl?: string;
+  currency?: string;
+  language?: string;
+  role?: UserRoleType;
+  hiddenMenus?: string[]; // Danh sách các href của menu bị ẩn
 }
 
 interface UserState {
   user: User | null;
   token: string | null;
+  isAuthenticated: boolean;
+  hiddenMenus: string[];
+  role: UserRoleType;
   theme: 'dark' | 'light';
   showAmount: boolean;
-  setAuth: (user: User, token: string) => void;
-  logout: () => void;
+
+  // Actions
+  setUser: (user: User) => void;
+  setToken: (token: string) => void;
+  setHiddenMenus: (menus: string[]) => void;
   toggleTheme: () => void;
   toggleShowAmount: () => void;
+  toggleMenuVisibility: (href: string) => Promise<void>;
+  resetMenuVisibility: () => Promise<void>;
+  switchRole: (newRole: UserRoleType) => Promise<void>;
   initAuth: () => void;
+  setAuth: (user: User, token: string) => void;
+  login: (user: User, token: string) => void;
+  logout: () => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
-  user: null,
-  token: null,
-  theme: 'dark',
-  showAmount: false, // Mặc định ẨN số tiền (chỉ hiển thị khi bấm icon con mắt)
+const saveTokenToStorage = (token: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('finflow_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('finflow_token');
+  }
+};
 
-  setAuth: (user, token) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('finflow_token', token);
-      localStorage.setItem('finflow_user', JSON.stringify(user));
-    }
-    set({ user, token });
-  },
+export const useUserStore = create<UserState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      hiddenMenus: [],
+      role: 'PERSONAL',
+      theme: 'dark',
+      showAmount: true,
 
-  logout: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('finflow_token');
-      localStorage.removeItem('finflow_user');
-    }
-    set({ user: null, token: null });
-  },
+      setUser: (user) =>
+        set({
+          user,
+          hiddenMenus: user.hiddenMenus || [],
+          role: user.role || 'PERSONAL',
+        }),
 
-  toggleTheme: () => {
-    set((state) => {
-      const newTheme = state.theme === 'dark' ? 'light' : 'dark';
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('finflow_theme', newTheme);
-        if (newTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+      setToken: (token) => {
+        set({ token, isAuthenticated: !!token });
+        saveTokenToStorage(token);
+      },
+
+      setHiddenMenus: (menus) => {
+        set({ hiddenMenus: menus });
+      },
+
+      toggleTheme: () => {
+        const next = get().theme === 'dark' ? 'light' : 'dark';
+        set({ theme: next });
+        if (typeof window !== 'undefined') {
+          if (next === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
         }
-      }
-      return { theme: newTheme };
-    });
-  },
+      },
 
-  toggleShowAmount: () => {
-    set((state) => {
-      const nextShow = !state.showAmount;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('finflow_show_amount', String(nextShow));
-      }
-      return { showAmount: nextShow };
-    });
-  },
+      toggleShowAmount: () => {
+        set({ showAmount: !get().showAmount });
+      },
 
-  initAuth: () => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('finflow_token');
-      const userStr = localStorage.getItem('finflow_user');
-      const savedTheme = (localStorage.getItem('finflow_theme') as 'dark' | 'light') || 'dark';
-      const savedShowAmount = localStorage.getItem('finflow_show_amount');
-      const showAmount = savedShowAmount !== null ? savedShowAmount === 'true' : false;
+      switchRole: async (newRole: UserRoleType) => {
+        set({ role: newRole });
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, role: newRole } });
+          try {
+            await api.put('/auth/profile', { role: newRole });
+          } catch (e) {
+            console.error('Failed to sync user role to server', e);
+          }
+        }
+      },
 
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      toggleMenuVisibility: async (href: string) => {
+        const currentHidden = get().hiddenMenus || [];
+        const isCurrentlyHidden = currentHidden.includes(href);
+        const nextHidden = isCurrentlyHidden
+          ? currentHidden.filter((item) => item !== href)
+          : [...currentHidden, href];
 
-      set({ showAmount });
+        set({ hiddenMenus: nextHidden });
 
-      if (token && userStr) {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, hiddenMenus: nextHidden } });
+        }
+
         try {
-          const user = JSON.parse(userStr);
-          set({ token, user, theme: savedTheme });
+          await api.put('/auth/profile', { hiddenMenus: nextHidden });
         } catch (e) {
-          localStorage.removeItem('finflow_token');
-          localStorage.removeItem('finflow_user');
+          console.error('Failed to sync hiddenMenus to server', e);
         }
-      }
-    }
-  },
-}));
+      },
+
+      resetMenuVisibility: async () => {
+        set({ hiddenMenus: [] });
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, hiddenMenus: [] } });
+        }
+
+        try {
+          await api.put('/auth/profile', { hiddenMenus: [] });
+        } catch (e) {
+          console.error('Failed to reset hiddenMenus on server', e);
+        }
+      },
+
+      initAuth: () => {
+        if (typeof window !== 'undefined') {
+          const storedToken =
+            localStorage.getItem('auth_token') ||
+            localStorage.getItem('finflow_token') ||
+            get().token;
+
+          if (storedToken) {
+            saveTokenToStorage(storedToken);
+            set({ token: storedToken, isAuthenticated: true });
+          }
+          if (get().theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+      },
+
+      setAuth: (user, token) => {
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          hiddenMenus: user.hiddenMenus || [],
+          role: user.role || 'PERSONAL',
+        });
+        saveTokenToStorage(token);
+      },
+
+      login: (user, token) => {
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          hiddenMenus: user.hiddenMenus || [],
+          role: user.role || 'PERSONAL',
+        });
+        saveTokenToStorage(token);
+      },
+
+      logout: () => {
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          hiddenMenus: [],
+          role: 'PERSONAL',
+        });
+        saveTokenToStorage(null);
+      },
+    }),
+    {
+      name: 'user-storage',
+    },
+  ),
+);

@@ -3,94 +3,98 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Transaction, TransactionDocument, TransactionType } from '../../schemas/transaction.schema';
 import { Wallet, WalletDocument, WalletType } from '../../schemas/wallet.schema';
+import { AppCacheService } from '../../common/cache/app-cache.service';
 
 @Injectable()
 export class AnalyticsService {
   constructor(
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
+    private readonly cacheService: AppCacheService,
   ) {}
 
   async getDashboardSummary(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+    return this.cacheService.getOrSet(`analytics:summary:${userId}`, async () => {
+      const userObjId = new Types.ObjectId(userId);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
 
-    const startOfMonth = new Date(currentYear, currentMonth, 1);
-    const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+      const startOfMonth = new Date(currentYear, currentMonth, 1);
+      const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
 
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-    // Total balance across spending wallets (excluding savings goals)
-    const wallets = await this.walletModel.find({ userId: userObjId });
-    const totalBalance = wallets
-      .filter((w) => w.type !== WalletType.SAVINGS && !w.isExcludedFromTotal)
-      .reduce((sum, w) => sum + w.currentBalance, 0);
+      // Total balance across spending wallets (excluding savings goals)
+      const wallets = await this.walletModel.find({ userId: userObjId });
+      const totalBalance = wallets
+        .filter((w) => w.type !== WalletType.SAVINGS && !w.isExcludedFromTotal)
+        .reduce((sum, w) => sum + w.currentBalance, 0);
 
-    const totalSavings = wallets
-      .filter((w) => w.type === WalletType.SAVINGS || w.isExcludedFromTotal)
-      .reduce((sum, w) => sum + w.currentBalance, 0);
+      const totalSavings = wallets
+        .filter((w) => w.type === WalletType.SAVINGS || w.isExcludedFromTotal)
+        .reduce((sum, w) => sum + w.currentBalance, 0);
 
-    // Monthly Income & Expense
-    const monthlyStats = await this.transactionModel.aggregate([
-      {
-        $match: {
-          userId: userObjId,
-          date: { $gte: startOfMonth, $lte: endOfMonth },
+      // Monthly Income & Expense
+      const monthlyStats = await this.transactionModel.aggregate([
+        {
+          $match: {
+            userId: userObjId,
+            date: { $gte: startOfMonth, $lte: endOfMonth },
+          },
         },
-      },
-      {
-        $group: {
-          _id: '$type',
-          total: { $sum: '$amount' },
+        {
+          $group: {
+            _id: '$type',
+            total: { $sum: '$amount' },
+          },
         },
-      },
-    ]);
+      ]);
 
-    let monthlyIncome = 0;
-    let monthlyExpense = 0;
-    monthlyStats.forEach((stat) => {
-      if (stat._id === TransactionType.INCOME) monthlyIncome = stat.total;
-      if (stat._id === TransactionType.EXPENSE) monthlyExpense = stat.total;
-    });
+      let monthlyIncome = 0;
+      let monthlyExpense = 0;
+      monthlyStats.forEach((stat) => {
+        if (stat._id === TransactionType.INCOME) monthlyIncome = stat.total;
+        if (stat._id === TransactionType.EXPENSE) monthlyExpense = stat.total;
+      });
 
-    // Today Income & Expense
-    const todayStats = await this.transactionModel.aggregate([
-      {
-        $match: {
-          userId: userObjId,
-          date: { $gte: startOfToday, $lte: endOfToday },
+      // Today Income & Expense
+      const todayStats = await this.transactionModel.aggregate([
+        {
+          $match: {
+            userId: userObjId,
+            date: { $gte: startOfToday, $lte: endOfToday },
+          },
         },
-      },
-      {
-        $group: {
-          _id: '$type',
-          total: { $sum: '$amount' },
+        {
+          $group: {
+            _id: '$type',
+            total: { $sum: '$amount' },
+          },
         },
-      },
-    ]);
+      ]);
 
-    let todayIncome = 0;
-    let todayExpense = 0;
-    todayStats.forEach((stat) => {
-      if (stat._id === TransactionType.INCOME) todayIncome = stat.total;
-      if (stat._id === TransactionType.EXPENSE) todayExpense = stat.total;
-    });
+      let todayIncome = 0;
+      let todayExpense = 0;
+      todayStats.forEach((stat) => {
+        if (stat._id === TransactionType.INCOME) todayIncome = stat.total;
+        if (stat._id === TransactionType.EXPENSE) todayExpense = stat.total;
+      });
 
-    const totalTransactions = await this.transactionModel.countDocuments({ userId: userObjId });
+      const totalTransactions = await this.transactionModel.countDocuments({ userId: userObjId });
 
-    return {
-      totalBalance,
-      totalSavings,
-      monthlyIncome,
-      monthlyExpense,
-      todayIncome,
-      todayExpense,
-      totalTransactions,
-      netMonthly: monthlyIncome - monthlyExpense,
-    };
+      return {
+        totalBalance,
+        totalSavings,
+        monthlyIncome,
+        monthlyExpense,
+        todayIncome,
+        todayExpense,
+        totalTransactions,
+        netMonthly: monthlyIncome - monthlyExpense,
+      };
+    }, 30);
   }
 
   async getPieChartCategoryData(userId: string, month?: number, year?: number) {
