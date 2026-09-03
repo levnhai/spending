@@ -21,7 +21,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
     const isOrders = pathname === '/orders';
 
     return (
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-6 z-40">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-6 z-40">
         {/* Tab 1: Dashboard */}
         <Link
           href="/dashboard"
@@ -77,7 +77,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-2 z-40">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-2 z-40">
       {items.slice(0, 2).map((item) => {
         const isActive = pathname === item.href;
         const Icon = item.icon;
