@@ -471,10 +471,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Đã tải & nén ảnh tối ưu</span>
+                          <span>Tải thành công</span>
                         </p>
                         <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                          Đã lưu định dạng WebP siêu nhẹ
+                          định dạng WebP
                         </p>
                         <div className="flex items-center gap-2 mt-1.5">
                           <button
@@ -482,7 +482,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                             onClick={() => fileInputRef.current?.click()}
                             className="text-[11px] font-bold text-blue-500 hover:underline cursor-pointer"
                           >
-                            Đổi ảnh khác
+                            Đổi ảnh
                           </button>
                           <span className="text-slate-300 dark:text-slate-700">•</span>
                           <button
@@ -542,9 +542,6 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Danh Sách Khách Hàng ({customers.length})
                   </label>
-                  <p className="text-[11px] text-slate-400">
-                    Thêm nhiều khách chung 1 chuyến hàng hoặc người mua lẻ
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -565,7 +562,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     onClick={handleOpenAddCustomerModal}
                     className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"
                   >
-                    + Thêm Khách Hàng Đầu Tiên
+                    + Thêm Khách Hàng
                   </button>
                 </div>
               ) : (
@@ -716,7 +713,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 <h4 className="font-bold text-base text-slate-900 dark:text-white">
                   {editingCustomerIndex !== null
                     ? `Chỉnh Sửa Khách Hàng #${editingCustomerIndex + 1}`
-                    : 'Thêm Khách Hàng Vào Đơn'}
+                    : 'Thêm Khách Hàng'}
                 </h4>
               </div>
               <button
@@ -783,51 +780,109 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               </div>
 
               {/* Phân tách: Tổng tiền & Tiền đã thanh toán */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Tổng tiền cần thu <span className="text-rose-500">*</span>
-                    </label>
-                    {parseFormattedNumber(custAmountStr) > 0 && (
-                      <span className="text-[11px] font-extrabold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-md">
-                        {formatVND(parseFormattedNumber(custAmountStr))}
-                      </span>
-                    )}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Tổng tiền cần thu <span className="text-rose-500">*</span>
+                      </label>
+                      {parseFormattedNumber(custAmountStr) > 0 && (
+                        <span className="text-[11px] font-extrabold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-md">
+                          {formatVND(parseFormattedNumber(custAmountStr))}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={14}
+                      value={custAmountStr}
+                      onChange={(e) => setCustAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                      placeholder="0"
+                      required
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={14}
-                    value={custAmountStr}
-                    onChange={(e) => setCustAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
-                    placeholder="0"
-                    required
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
-                  />
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Tiền khách đã trả
+                      </label>
+                      {parseFormattedNumber(custPaidAmountStr) > 0 && (
+                        <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                          {formatVND(parseFormattedNumber(custPaidAmountStr))}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={14}
+                      value={custPaidAmountStr}
+                      onChange={(e) => setCustPaidAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                      placeholder="0"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Tiền khách đã trả
-                    </label>
-                    {parseFormattedNumber(custPaidAmountStr) > 0 && (
-                      <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
-                        {formatVND(parseFormattedNumber(custPaidAmountStr))}
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={14}
-                    value={custPaidAmountStr}
-                    onChange={(e) => setCustPaidAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
-                    placeholder="0"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
-                  />
-                </div>
+                {/* Line thể hiện % đã trả so với đơn hàng */}
+                {(() => {
+                  const total = parseFormattedNumber(custAmountStr);
+                  const paid = parseFormattedNumber(custPaidAmountStr);
+                  const percent = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+                  const remaining = Math.max(0, total - paid);
+
+                  return (
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                          Tiến độ thanh toán:
+                          <strong
+                            className={`font-bold ${
+                              percent === 100
+                                ? 'text-emerald-500'
+                                : percent > 0
+                                ? 'text-indigo-500'
+                                : 'text-slate-400'
+                            }`}
+                          >
+                            {percent}%
+                          </strong>
+                        </span>
+                        <span className="text-[11px]">
+                          {total === 0 ? (
+                            <span className="text-slate-400">Chưa nhập tổng tiền</span>
+                          ) : percent === 100 ? (
+                            <span className="text-emerald-500 font-bold">✓ Đã thanh toán đủ</span>
+                          ) : remaining > 0 ? (
+                            <span className="text-amber-500 font-semibold">
+                              Còn nợ: <strong>{formatVND(remaining)}</strong>
+                            </span>
+                          ) : (
+                            <span className="text-rose-500">Chưa thanh toán</span>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Thanh Progress Bar */}
+                      <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700/80 overflow-hidden relative">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            percent === 100
+                              ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                              : percent > 0
+                              ? 'bg-gradient-to-r from-indigo-500 to-emerald-400'
+                              : 'bg-slate-300 dark:bg-slate-600'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Trạng thái đơn & Ngày lên đơn */}

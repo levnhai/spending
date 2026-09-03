@@ -66,32 +66,32 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Nút Thêm Đơn Hàng (Role Bán Hàng) */}
+        {/* Nút Thêm Đơn Hàng (Role Bán Hàng - Ẩn trên mobile vì đã có BottomNav) */}
         {userRole === 'SALES' && onOpenQuickAddOrder && (
           <button
             onClick={onOpenQuickAddOrder}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all"
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm đơn hàng</span>
           </button>
         )}
 
-        {/* Nút Thêm Giao Dịch (Role Cá Nhân) */}
+        {/* Nút Thêm Giao Dịch (Role Cá Nhân - Ẩn trên mobile vì đã có BottomNav) */}
         {userRole === 'PERSONAL' && onOpenQuickAdd && (
           <button
             onClick={onOpenQuickAdd}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all"
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:opacity-95 active:scale-95 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm giao dịch</span>
           </button>
         )}
 
-        {/* Toggle Show/Hide Amount Button */}
+        {/* Toggle Show/Hide Amount Button (Ẩn trên mobile) */}
         <button
           onClick={toggleShowAmount}
-          className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+          className="hidden sm:flex p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors items-center gap-1.5 cursor-pointer"
           title={showAmount ? 'Ẩn số tiền' : 'Hiển thị số tiền'}
         >
           {showAmount ? (
@@ -101,9 +101,9 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        {/* Notification Bell */}
+        {/* Notification Bell (Ẩn trên mobile) */}
         <button
-          className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 relative transition-colors"
+          className="hidden sm:flex p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 relative transition-colors cursor-pointer"
           title="Thông báo"
         >
           <Bell className="w-5 h-5" />

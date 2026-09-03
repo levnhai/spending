@@ -8,6 +8,7 @@ import { useUserStore } from '@/entities/user/useUserStore';
 import { APP_NAVIGATION_ITEMS } from '@/shared/config/navigation.config';
 import { AuthPageView } from '@/views/auth/AuthPageView';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
+import { AddEditOrderModal } from '@/features/order-management';
 import { PwaRegister } from '@/shared/ui/PwaRegister';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, token, role, initAuth } = useUserStore();
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
 
   const userRole = role || user?.role || 'PERSONAL';
 
@@ -53,6 +55,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return <AuthPageView onSuccess={() => {}} />;
   }
 
+  const handleOpenBottomAdd = () => {
+    if (userRole === 'SALES') {
+      setIsAddOrderOpen(true);
+    } else {
+      setIsQuickAddOpen(true);
+    }
+  };
+
   return (
     <>
       <PwaRegister />
@@ -62,11 +72,19 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
 
-      <BottomNav onOpenQuickAdd={() => setIsQuickAddOpen(true)} />
+      <BottomNav onOpenQuickAdd={handleOpenBottomAdd} />
 
+      {/* Modal Thêm Giao Dịch (Chế độ Cá Nhân) */}
       <AddTransactionModal
         isOpen={isQuickAddOpen}
         onClose={() => setIsQuickAddOpen(false)}
+        onSuccess={() => window.location.reload()}
+      />
+
+      {/* Modal Thêm Đơn Hàng Mới (Chế độ Bán Hàng) */}
+      <AddEditOrderModal
+        isOpen={isAddOrderOpen}
+        onClose={() => setIsAddOrderOpen(false)}
         onSuccess={() => window.location.reload()}
       />
     </>

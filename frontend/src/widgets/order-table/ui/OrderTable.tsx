@@ -10,10 +10,6 @@ import {
   Package,
   X,
   Users,
-  CheckCircle2,
-  DollarSign,
-  FileText,
-  CreditCard,
   ExternalLink,
 } from 'lucide-react';
 import { Order, OrderStatusType, orderApi, ORDER_STATUS_CONFIG } from '@/entities/order';
@@ -527,7 +523,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                      <span>Ngày lên đơn: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{formatDate(cust.orderDate)}</strong></span>
+                      <span>Ngày tạo: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{formatDate(cust.orderDate)}</strong></span>
                       {cust.note && <span className="italic truncate max-w-xs">Ghi chú: {cust.note}</span>}
                     </div>
                   </div>
