@@ -14,9 +14,10 @@ import {
   Eye,
   CheckSquare,
   AlertTriangle,
+  FileDown,
 } from 'lucide-react';
 import { Order, OrderStatusType, orderApi, ORDER_STATUS_CONFIG } from '@/entities/order';
-import { OrderStatusDropdown } from '@/features/order-management';
+import { OrderStatusDropdown, ExportPdfModal } from '@/features/order-management';
 import { AmountDisplay } from '@/shared/ui/AmountDisplay';
 import { ConfirmModal } from '@/shared/ui/ConfirmModal';
 import { formatVND } from '@/shared/lib/formatters';
@@ -50,6 +51,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
   const [isShowSelectedModalOpen, setIsShowSelectedModalOpen] = useState(false);
+  const [isExportPdfModalOpen, setIsExportPdfModalOpen] = useState(false);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   // Cập nhật trạng thái indeterminate cho checkbox "chọn tất cả" ở header
@@ -184,6 +186,15 @@ export const OrderTable: React.FC<OrderTableProps> = ({
             >
               <Eye className="w-3.5 h-3.5 text-emerald-500" />
               <span>Show</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsExportPdfModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 transition-all cursor-pointer"
+              title="Xuất các đơn hàng đã chọn dưới dạng PDF"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>Xuất PDF</span>
             </button>
             <button
               type="button"
@@ -1020,6 +1031,15 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setIsExportPdfModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 transition-all cursor-pointer"
+                  title="Xuất danh sách đơn hàng đã chọn dưới dạng PDF"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>Xuất PDF</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setIsShowSelectedModalOpen(false);
                     setIsBatchDeleteModalOpen(true);
@@ -1041,6 +1061,13 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL XUẤT PDF */}
+      <ExportPdfModal
+        isOpen={isExportPdfModalOpen}
+        onClose={() => setIsExportPdfModalOpen(false)}
+        orders={selectedOrders}
+      />
     </>
   );
 };
