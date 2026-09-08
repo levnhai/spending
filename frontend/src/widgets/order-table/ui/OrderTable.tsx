@@ -170,6 +170,14 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={handleDeselectAll}
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              title="Hủy tích chọn các dòng"
+            >
+              Bỏ chọn
+            </button>
+            <button
+              type="button"
               onClick={() => setIsShowSelectedModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold shadow-sm transition-all cursor-pointer"
               title="Xem danh sách các đơn hàng đã được chọn"
@@ -307,6 +315,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                         </div>
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {mainCustomer?.name}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/20">
+                          SL: {mainCustomer?.quantity || 1}
                         </span>
 
                         {extraCount > 0 && (
@@ -495,6 +506,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {mainCustomer?.name}
                   </span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/20">
+                    SL: {mainCustomer?.quantity || 1}
+                  </span>
                   {mainCustomer?.facebookUrl && (
                     <a
                       href={mainCustomer.facebookUrl}
@@ -623,6 +637,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                             <p className="font-bold text-sm text-slate-900 dark:text-white">
                               {cust.name}
                             </p>
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-500/20">
+                              SL: {cust.quantity || 1}
+                            </span>
                             {cust.facebookUrl && (
                               <a
                                 href={cust.facebookUrl}
@@ -942,8 +959,13 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                             )}
                           </td>
                           <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-medium">
-                            <div className="truncate" title={custName}>
-                              {custName}
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate" title={custName}>
+                                {custName}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] shrink-0 border border-indigo-500/20">
+                                SL: {order.customers?.[0]?.quantity || 1}
+                              </span>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">

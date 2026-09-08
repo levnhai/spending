@@ -28,6 +28,11 @@ export class OrderCustomerDto {
   @IsString()
   facebookUrl?: string;
 
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
+
   @ApiPropertyOptional({ example: 12500000 })
   @IsOptional()
   @IsNumber()

@@ -29,6 +29,9 @@ export class OrderCustomer {
   @Prop({ default: '' })
   facebookUrl: string; // Link Facebook của khách hàng (tùy chọn)
 
+  @Prop({ default: 1 })
+  quantity: number; // Số lượng món / sản phẩm khách đặt
+
   @Prop({ default: 0 })
   amount: number; // Tổng tiền của khách hàng này
 

@@ -12,6 +12,7 @@ export interface OrderCustomer {
   name: string;
   phone?: string;
   facebookUrl?: string; // Link Facebook của khách hàng
+  quantity?: number; // Số lượng đặt
   amount?: number; // Tổng tiền khách này cần trả
   paidAmount?: number; // Tiền khách này đã thanh toán
   orderDate?: string; // Ngày lên đơn

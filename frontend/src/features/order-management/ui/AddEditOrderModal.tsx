@@ -42,6 +42,7 @@ const createEmptyCustomer = (): OrderCustomer => ({
   name: '',
   phone: '',
   facebookUrl: '',
+  quantity: 1,
   amount: 0,
   paidAmount: 0,
   orderDate: new Date().toISOString().split('T')[0],
@@ -76,6 +77,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [editingCustomerIndex, setEditingCustomerIndex] = useState<number | null>(null);
   const [custForm, setCustForm] = useState<OrderCustomer>(createEmptyCustomer());
+  const [custQuantityStr, setCustQuantityStr] = useState('1');
   const [custAmountStr, setCustAmountStr] = useState('');
   const [custPaidAmountStr, setCustPaidAmountStr] = useState('');
   const [custError, setCustError] = useState('');
@@ -111,6 +113,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             name: c.name || '',
             phone: c.phone || '',
             facebookUrl: c.facebookUrl || '',
+            quantity: c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
             amount: c.amount || 0,
             paidAmount: c.paidAmount || 0,
             orderDate: c.orderDate
@@ -127,6 +130,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             name: orderToEdit.customerName,
             phone: orderToEdit.customerPhone || '',
             facebookUrl: '',
+            quantity: 1,
             amount: orderToEdit.totalAmount || 0,
             paidAmount: orderToEdit.paidAmount || 0,
             orderDate: orderToEdit.orderDate
@@ -172,6 +176,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const handleOpenAddCustomerModal = () => {
     setEditingCustomerIndex(null);
     setCustForm(createEmptyCustomer());
+    setCustQuantityStr('1');
     setCustAmountStr('');
     setCustPaidAmountStr('');
     setCustError('');
@@ -183,6 +188,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     setEditingCustomerIndex(index);
     const target = customers[index];
     setCustForm({ ...target });
+    setCustQuantityStr(String(target.quantity || 1));
     setCustAmountStr(target.amount ? formatNumberWithSpaces(target.amount) : '');
     setCustPaidAmountStr(target.paidAmount ? formatNumberWithSpaces(target.paidAmount) : '');
     setCustError('');
@@ -199,6 +205,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
 
     const total = parseFormattedNumber(custAmountStr);
     const paid = parseFormattedNumber(custPaidAmountStr);
+    const qty = Math.max(1, parseInt(custQuantityStr) || 1);
     let paymentStatus: PaymentStatusType = custForm.paymentStatus || 'UNPAID';
 
     if (paid >= total && total > 0) {
@@ -214,6 +221,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       name: custForm.name.trim(),
       phone: custForm.phone?.trim() || '',
       facebookUrl: custForm.facebookUrl?.trim() || '',
+      quantity: qty,
       amount: total,
       paidAmount: paid,
       paymentStatus,
@@ -640,10 +648,13 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                             {idx + 1}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-bold text-slate-900 dark:text-white truncate">
                                 {c.name}
                               </p>
+                              <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/20">
+                                SL: {c.quantity || 1}
+                              </span>
                               {c.facebookUrl && (
                                 <a
                                   href={c.facebookUrl}
@@ -761,7 +772,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
           onClick={() => setIsCustomerModalOpen(false)}
         >
           <div
-            className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 space-y-4"
+            className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -836,16 +847,65 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 </div>
               </div>
 
-              {/* Phân tách: Tổng tiền & Tiền đã thanh toán */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Phân tách: Số lượng, Tổng tiền & Tiền đã thanh toán */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[135px_1fr_1fr] gap-3 items-start">
+                  {/* Số lượng */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 whitespace-nowrap">
+                      Số lượng (SL) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = Math.max(1, parseInt(custQuantityStr) || 1);
+                          if (current > 1) setCustQuantityStr(String(current - 1));
+                        }}
+                        className="w-9 h-10 rounded-l-xl bg-slate-100 dark:bg-slate-800 border border-r-0 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Giảm 1"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        value={custQuantityStr}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setCustQuantityStr(val);
+                        }}
+                        onBlur={() => {
+                          if (!custQuantityStr || parseInt(custQuantityStr) < 1) {
+                            setCustQuantityStr('1');
+                          }
+                        }}
+                        placeholder="1"
+                        required
+                        className="w-full h-10 text-center bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = Math.max(1, parseInt(custQuantityStr) || 1);
+                          setCustQuantityStr(String(current + 1));
+                        }}
+                        className="w-9 h-10 rounded-r-xl bg-slate-100 dark:bg-slate-800 border border-l-0 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Tăng 1"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">
                         Tổng tiền cần thu <span className="text-rose-500">*</span>
                       </label>
                       {parseFormattedNumber(custAmountStr) > 0 && (
-                        <span className="text-[11px] font-extrabold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-md">
+                        <span className="text-[11px] font-extrabold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-md shrink-0">
                           {formatVND(parseFormattedNumber(custAmountStr))}
                         </span>
                       )}
@@ -858,17 +918,17 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       onChange={(e) => setCustAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
                       placeholder="0"
                       required
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                      className="w-full h-10 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
                     />
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">
                         Tiền khách đã trả
                       </label>
                       {parseFormattedNumber(custPaidAmountStr) > 0 && (
-                        <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                        <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md shrink-0">
                           {formatVND(parseFormattedNumber(custPaidAmountStr))}
                         </span>
                       )}
@@ -880,7 +940,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       value={custPaidAmountStr}
                       onChange={(e) => setCustPaidAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
                       placeholder="0"
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                      className="w-full h-10 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
                     />
                   </div>
                 </div>
