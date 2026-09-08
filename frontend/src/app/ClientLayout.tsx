@@ -71,7 +71,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Thanh che chắn Safe Area Top (Status Bar) chống lọt nội dung khi cuộn */}
       <div className="fixed top-0 left-0 right-0 h-[env(safe-area-inset-top,0px)] bg-white dark:bg-slate-900 z-50 pointer-events-none" />
 
       <DevToolsGuard />

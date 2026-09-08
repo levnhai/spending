@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Edit2,
   Trash2,
@@ -11,6 +11,9 @@ import {
   X,
   Users,
   ExternalLink,
+  Eye,
+  CheckSquare,
+  AlertTriangle,
 } from 'lucide-react';
 import { Order, OrderStatusType, orderApi, ORDER_STATUS_CONFIG } from '@/entities/order';
 import { OrderStatusDropdown } from '@/features/order-management';
@@ -41,6 +44,58 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   const [activeCustomersModal, setActiveCustomersModal] = useState<Order | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<{ id: string; code: string; title?: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // States quản lý checkbox chọn đơn hàng
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+  const [isShowSelectedModalOpen, setIsShowSelectedModalOpen] = useState(false);
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+  // Cập nhật trạng thái indeterminate cho checkbox "chọn tất cả" ở header
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate =
+        selectedIds.length > 0 && selectedIds.length < orders.length;
+    }
+  }, [selectedIds, orders]);
+
+  // Chọn/Bỏ chọn một đơn hàng
+  const handleToggleSelect = (orderId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId],
+    );
+  };
+
+  // Chọn tất cả hoặc bỏ chọn tất cả
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === orders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(orders.map((o) => o._id));
+    }
+  };
+
+  // Bỏ chọn tất cả
+  const handleDeselectAll = () => {
+    setSelectedIds([]);
+  };
+
+  // Xác nhận xóa hàng loạt
+  const handleConfirmBatchDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBatchDeleting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => orderApi.delete(id)));
+      setSelectedIds([]);
+      setIsBatchDeleteModalOpen(false);
+      onDeleted();
+    } catch (e) {
+      alert('Đã xảy ra lỗi khi xóa đơn hàng');
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  };
 
   const handleConfirmDelete = async () => {
     if (!orderToDelete) return;
@@ -90,14 +145,67 @@ export const OrderTable: React.FC<OrderTableProps> = ({
     );
   }
 
+  const selectedOrders = orders.filter((o) => selectedIds.includes(o._id));
+  const selectedTotalAmount = selectedOrders.reduce(
+    (sum, o) => sum + (Number(o.totalAmount) || 0),
+    0,
+  );
+  const selectedPaidAmount = selectedOrders.reduce(
+    (sum, o) => sum + (Number(o.paidAmount) || 0),
+    0,
+  );
+  const selectedRemainingAmount = Math.max(0, selectedTotalAmount - selectedPaidAmount);
+
   return (
     <>
+      {/* THANH THAO TÁC HÀNG LOẠT (BULK ACTION BAR) */}
+      {selectedIds.length > 0 && (
+        <div className="mb-3 px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              Đã chọn <span className="underline">{selectedIds.length}</span> / {orders.length} đơn hàng
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsShowSelectedModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold shadow-sm transition-all cursor-pointer"
+              title="Xem danh sách các đơn hàng đã được chọn"
+            >
+              <Eye className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Show</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsBatchDeleteModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-500 text-white hover:bg-rose-600 text-xs font-bold shadow-sm shadow-rose-500/20 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa đã chọn ({selectedIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* DESKTOP TABLE VIEW */}
       <div className="hidden lg:block rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         <div className="max-h-[620px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm">
               <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                {/* CỘT CHECKBOX CHỌN TẤT CẢ */}
+                <th className="py-3.5 px-3 text-center w-12">
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    checked={orders.length > 0 && selectedIds.length === orders.length}
+                    onChange={handleToggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 focus:ring-offset-0 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500"
+                    title={selectedIds.length === orders.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả đơn hàng'}
+                  />
+                </th>
                 <th className="py-3.5 px-4 text-center w-28">Mã Đơn Hàng</th>
                 <th className="py-3.5 px-4 w-16 text-center">Hình Ảnh</th>
                 <th className="py-3.5 px-4">Tên Đơn Hàng</th>
@@ -128,12 +236,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 const orderTotal = Number(order.totalAmount) || 0;
                 const orderPaid = Number(order.paidAmount) || 0;
                 const orderRemaining = Math.max(0, orderTotal - orderPaid);
+                const isSelected = selectedIds.includes(order._id);
 
                 return (
                   <tr
                     key={order._id}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                    className={`transition-colors ${
+                      isSelected
+                        ? 'bg-emerald-500/10 hover:bg-emerald-500/15 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15'
+                        : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/30'
+                    }`}
                   >
+                    {/* CỘT CHECKBOX TỪNG ĐƠN HÀNG */}
+                    <td className="py-3.5 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(order._id)}
+                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 focus:ring-offset-0 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500"
+                        title={isSelected ? 'Bỏ chọn đơn này' : 'Chọn đơn này'}
+                      />
+                    </td>
+
                     {/* MÃ ĐƠN HÀNG (Thay thế STT) */}
                     <td className="py-3.5 px-4 text-center">
                       <span className="font-mono text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20 shadow-sm inline-block">
@@ -304,13 +428,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           const orderPaid = Number(order.paidAmount) || 0;
           const orderRemaining = Math.max(0, orderTotal - orderPaid);
 
+          const isSelected = selectedIds.includes(order._id);
+
           return (
             <div
               key={order._id}
-              className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3"
+              className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-sm space-y-3 transition-colors ${
+                isSelected
+                  ? 'border-emerald-500/60 bg-emerald-500/5 dark:bg-emerald-500/5 ring-1 ring-emerald-500/30'
+                  : 'border-slate-200 dark:border-slate-800'
+              }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
+                  {/* Checkbox mobile */}
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggleSelect(order._id)}
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500 shrink-0"
+                    title={isSelected ? 'Bỏ chọn' : 'Chọn'}
+                  />
+
                   {/* Image */}
                   {order.imageUrl ? (
                     <button
@@ -597,19 +736,289 @@ export const OrderTable: React.FC<OrderTableProps> = ({
         onConfirm={handleConfirmDelete}
         title="Xác nhận xóa đơn hàng"
         message={
-          <div>
-            Bạn có chắc chắn muốn xóa đơn hàng{' '}
-            <strong className="text-rose-500 font-bold">
-              {orderToDelete?.code}
-            </strong>
-            {orderToDelete?.title ? ` (${orderToDelete.title})` : ''}? Thao tác này không thể hoàn tác.
+          <div className="space-y-3 text-left">
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
+              Bạn có chắc chắn muốn xóa đơn hàng{' '}
+              <strong className="text-rose-500 font-bold font-mono">
+                {orderToDelete?.code}
+              </strong>
+              {orderToDelete?.title ? ` - ${orderToDelete.title}` : ''}?
+            </p>
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Dữ liệu đơn hàng này sẽ bị xóa vĩnh viễn và không thể khôi phục.</span>
+            </div>
           </div>
         }
-        confirmText="Xóa đơn hàng"
+        confirmText="Xác nhận xóa đơn hàng"
         cancelText="Hủy bỏ"
         variant="danger"
         isLoading={isDeleting}
       />
+
+      {/* BATCH DELETE CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={isBatchDeleteModalOpen}
+        onClose={() => {
+          if (!isBatchDeleting) setIsBatchDeleteModalOpen(false);
+        }}
+        onConfirm={handleConfirmBatchDelete}
+        title={`Xác nhận xóa ${selectedIds.length} đơn hàng đã chọn`}
+        message={
+          <div className="space-y-3 text-left">
+            <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+              Bạn có chắc chắn muốn <span className="text-rose-500 font-bold">xóa vĩnh viễn</span>{' '}
+              <span className="font-extrabold text-slate-900 dark:text-white">{selectedIds.length} đơn hàng</span> này khỏi hệ thống?
+            </p>
+
+            {/* Danh sách mã đơn hàng sẽ bị xóa */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-semibold">Các đơn hàng:</span>
+                <span className="font-bold text-rose-500">
+                  Tổng tiền: {renderAmount(selectedTotalAmount)}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                {selectedOrders.map((o) => (
+                  <span
+                    key={o._id}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                    title={o.title}
+                  >
+                    <span>{o.orderCode}</span>
+                    {o.title && <span className="text-slate-400 font-sans truncate max-w-[90px]">({o.title})</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Cảnh báo: Dữ liệu bị xóa sẽ không thể hoàn tác!</span>
+            </div>
+          </div>
+        }
+        confirmText={`Xóa vĩnh viễn ${selectedIds.length} đơn`}
+        cancelText="Hủy bỏ"
+        variant="danger"
+        isLoading={isBatchDeleting}
+      />
+
+      {/* MODAL HIỂN THỊ CÁC DÒNG ĐÃ CHECKBOX (SHOW SELECTED MODAL) */}
+      {isShowSelectedModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setIsShowSelectedModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 space-y-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 shadow-sm">
+                  <CheckSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+                      Danh Sách Đơn Hàng Đã Chọn
+                    </h3>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20">
+                      {selectedOrders.length} đơn
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Các dòng đơn hàng đang được tích checkbox trong bảng
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsShowSelectedModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Summary Stats */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Tổng tiền
+                </span>
+                <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+                  {renderAmount(selectedTotalAmount)}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-500/20">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                  Đã thu
+                </span>
+                <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {renderAmount(selectedPaidAmount)}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-500/20">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                  Còn nợ
+                </span>
+                <span className="text-base sm:text-lg font-extrabold text-amber-600 dark:text-amber-400">
+                  {renderAmount(selectedRemainingAmount)}
+                </span>
+              </div>
+            </div>
+
+            {/* Danh sách các đơn hàng đã chọn */}
+            <div className="overflow-y-auto flex-1 pr-1 border border-slate-200 dark:border-slate-800 rounded-2xl">
+              {selectedOrders.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 text-sm">
+                  Không còn đơn hàng nào được chọn
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm text-[11px] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700/80">
+                    <tr>
+                      <th className="py-3 px-4 text-center w-28">Mã đơn</th>
+                      <th className="py-3 px-3 w-16 text-center">Ảnh</th>
+                      <th className="py-3 px-4">Tên đơn hàng</th>
+                      <th className="py-3 px-4">Khách hàng</th>
+                      <th className="py-3 px-4">Ngày lên đơn</th>
+                      <th className="py-3 px-4 text-right">Tổng tiền & Đã thu</th>
+                      <th className="py-3 px-4 text-center w-36">Trạng thái</th>
+                      <th className="py-3 px-3 text-center w-14">Bỏ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {selectedOrders.map((order) => {
+                      const statusConfig = ORDER_STATUS_CONFIG[order.status] || {
+                        label: order.status,
+                        color: 'bg-slate-500/10 text-slate-500',
+                      };
+                      const custName =
+                        order.customers?.[0]?.name || order.customerName || 'Khách lẻ';
+
+                      return (
+                        <tr
+                          key={order._id}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20 shadow-sm inline-block">
+                              {order.orderCode}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {order.imageUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImage(order.imageUrl || null)}
+                                className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 mx-auto block hover:opacity-80 transition-opacity"
+                                title="Xem ảnh lớn"
+                              >
+                                <img
+                                  src={order.imageUrl}
+                                  alt={order.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 mx-auto">
+                                <ImageIcon className="w-4 h-4 opacity-50" />
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white text-sm">
+                            <div className="line-clamp-1" title={order.title}>
+                              {order.title}
+                            </div>
+                            {order.note && (
+                              <div className="text-[11px] text-slate-400 truncate mt-0.5" title={order.note}>
+                                • {order.note}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-medium">
+                            <div className="truncate" title={custName}>
+                              {custName}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{formatDate(order.orderDate || order.customers?.[0]?.orderDate)}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-white">
+                            <div className="text-sm">{renderAmount(Number(order.totalAmount) || 0)}</div>
+                            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">
+                              Đã thu: {renderAmount(Number(order.paidAmount) || 0)}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${statusConfig.color}`}
+                            >
+                              {statusConfig.label}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSelect(order._id)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Bỏ chọn đơn này"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeselectAll();
+                  setIsShowSelectedModalOpen(false);
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Bỏ chọn tất cả
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsShowSelectedModalOpen(false);
+                    setIsBatchDeleteModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500 text-white hover:bg-rose-600 text-xs font-bold shadow-sm shadow-rose-500/20 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa các đơn này ({selectedOrders.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsShowSelectedModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

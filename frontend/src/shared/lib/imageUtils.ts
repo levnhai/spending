@@ -4,9 +4,9 @@
  */
 export const compressImageFile = (
   file: File,
-  maxWidth = 800,
-  maxHeight = 800,
-  quality = 0.75,
+  maxWidth = 1600,
+  maxHeight = 1600,
+  quality = 0.82,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {

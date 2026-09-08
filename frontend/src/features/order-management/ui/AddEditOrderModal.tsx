@@ -16,6 +16,8 @@ import {
   Clock,
   UploadCloud,
   Loader2,
+  Maximize2,
+  Eye,
 } from 'lucide-react';
 import {
   Order,
@@ -61,6 +63,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
   const [isCompressingImage, setIsCompressingImage] = useState(false);
+  const [previewFullImage, setPreviewFullImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [costPriceStr, setCostPriceStr] = useState('');
@@ -83,7 +86,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
 
     setIsCompressingImage(true);
     try {
-      const compressedDataUrl = await compressImageFile(file, 800, 800, 0.75);
+      // Nâng kích thước tối đa lên 1600x1600 để ảnh sắc nét, rõ ràng
+      const compressedDataUrl = await compressImageFile(file, 1600, 1600, 0.85);
       setImageUrl(compressedDataUrl);
     } catch (err: any) {
       alert(err.message || 'Không thể xử lý hình ảnh');
@@ -401,17 +405,17 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             </div>
 
             {/* Hình ảnh sản phẩm / Chứng từ (Upload hoặc Dán URL) */}
-            <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+            <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
+                  <ImageIcon className="w-4 h-4 text-emerald-500" />
                   <span>Hình ảnh sản phẩm / Chứng từ</span>
                 </label>
-                <div className="flex items-center gap-1 text-[11px]">
+                <div className="flex items-center gap-1 text-[11px] bg-slate-200/60 dark:bg-slate-900/60 p-1 rounded-xl">
                   <button
                     type="button"
                     onClick={() => setImageInputMode('upload')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                       imageInputMode === 'upload'
                         ? 'bg-emerald-500 text-white shadow-sm'
                         : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
@@ -422,7 +426,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setImageInputMode('url')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                       imageInputMode === 'url'
                         ? 'bg-emerald-500 text-white shadow-sm'
                         : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
@@ -446,50 +450,79 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   {!imageUrl ? (
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-white/50 dark:bg-slate-900/50 space-y-1.5"
+                      className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500/80 dark:hover:border-emerald-500/80 rounded-2xl p-6 text-center cursor-pointer transition-all bg-white/50 dark:bg-slate-900/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 space-y-2 group"
                     >
-                      <div className="w-9 h-9 mx-auto rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                      <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                         {isCompressingImage ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-6 h-6 animate-spin" />
                         ) : (
-                          <UploadCloud className="w-5 h-5" />
+                          <UploadCloud className="w-6 h-6" />
                         )}
                       </div>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {isCompressingImage ? 'Đang nén và tối ưu ảnh...' : 'Nhấn để chọn ảnh từ máy tính / điện thoại'}
-                      </p>
+                      <div>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {isCompressingImage ? 'Đang xử lý và tối ưu ảnh độ nét cao...' : 'Nhấn để chọn ảnh từ máy tính / điện thoại'}
+                        </p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                          Hỗ trợ PNG, JPG, JPEG, WEBP • Tối ưu độ phân giải cao 1600px sắc nét
+                        </p>
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4">
+                      {/* Khung ảnh xem trước kích thước lớn */}
+                      <div
+                        onClick={() => setPreviewFullImage(imageUrl)}
+                        className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden bg-slate-950/40 border border-slate-200 dark:border-slate-700/80 shrink-0 cursor-pointer group shadow-sm"
+                        title="Bấm để xem ảnh phóng to"
+                      >
                         <img
                           src={imageUrl}
-                          alt="Xem trước"
-                          className="w-full h-full object-cover"
+                          alt="Xem trước ảnh đơn hàng"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                         />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-[2px]">
+                          <Maximize2 className="w-4 h-4" />
+                          <span>Xem lớn</span>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Tải thành công</span>
+
+                      {/* Thông tin và các nút thao tác */}
+                      <div className="flex-1 w-full space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Đã tải ảnh lên thành công
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Hình ảnh đã được nén tối ưu độ nét cao (1600px), rõ ràng chi tiết sản phẩm và hóa đơn chứng từ.
                         </p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                          định dạng WebP
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5">
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFullImage(imageUrl)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-emerald-500" />
+                            Xem ảnh lớn
+                          </button>
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="text-[11px] font-bold text-blue-500 hover:underline cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition-colors cursor-pointer"
                           >
-                            Đổi ảnh
+                            <UploadCloud className="w-3.5 h-3.5" />
+                            Đổi ảnh khác
                           </button>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
                           <button
                             type="button"
                             onClick={() => setImageUrl('')}
-                            className="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
                           >
+                            <Trash2 className="w-3.5 h-3.5" />
                             Xóa ảnh
                           </button>
                         </div>
@@ -499,7 +532,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 </div>
               ) : (
                 /* Mode 2: Nhập Link URL */
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="relative">
                     <ImageIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -511,24 +544,48 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     />
                   </div>
                   {imageUrl && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 relative bg-slate-100 dark:bg-slate-800 shrink-0">
+                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-3">
+                      <div
+                        onClick={() => setPreviewFullImage(imageUrl)}
+                        className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950/40 shrink-0 cursor-pointer group shadow-sm"
+                        title="Bấm để xem ảnh phóng to"
+                      >
                         <img
                           src={imageUrl}
                           alt="Xem trước"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           onError={(e) => {
                             (e.target as HTMLElement).style.display = 'none';
                           }}
                         />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-bold backdrop-blur-[2px]">
+                          <Maximize2 className="w-4 h-4" />
+                          <span>Xem lớn</span>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setImageUrl('')}
-                        className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer"
-                      >
-                        Xóa ảnh
-                      </button>
+                      <div className="flex-1 w-full space-y-2">
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Ảnh từ liên kết ngoài
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFullImage(imageUrl)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-emerald-500" />
+                            Xem lớn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setImageUrl('')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Xóa ảnh
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -948,6 +1005,33 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XEM ẢNH PHÓNG TO TOÀN MÀN HÌNH */}
+      {previewFullImage && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setPreviewFullImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl p-3 border border-slate-700/80 shadow-2xl overflow-hidden flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewFullImage(null)}
+              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shadow-lg backdrop-blur-sm border border-slate-700"
+              title="Đóng xem ảnh"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={previewFullImage}
+              alt="Ảnh phóng to"
+              className="max-h-[82vh] w-auto max-w-full object-contain rounded-2xl"
+            />
           </div>
         </div>
       )}
