@@ -7,6 +7,11 @@ import { useEffect } from 'react';
  */
 export const DevToolsGuard: React.FC = () => {
   useEffect(() => {
+    // Cho phép mở DevTools và chuột phải trong môi trường phát triển (development)
+    if (process.env.NODE_ENV !== 'production') {
+      return;
+    }
+
     // 1. Chặn phím tắt mở DevTools / View Source
     const handleKeyDown = (e: KeyboardEvent) => {
       // Phím F12

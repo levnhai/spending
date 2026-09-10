@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnApplicationBootstrap, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument, OrderStatus, PaymentStatus } from '../../schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { UploadService } from '../upload/upload.service';
 
 export type TimePeriod = 'today' | 'week' | 'month' | 'year' | 'all';
 
@@ -228,11 +229,61 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
 import { AppCacheService } from '../../common/cache/app-cache.service';
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private readonly cacheService: AppCacheService,
+    private readonly uploadService: UploadService,
   ) {}
+
+  /**
+   * Tự động quét và giải phóng các ảnh Base64 cũ lưu trong DB sang file tĩnh WebP
+   */
+  async onApplicationBootstrap() {
+    try {
+      const ordersWithBase64 = await this.orderModel
+        .find({ imageUrl: { $regex: /^data:image\// } })
+        .limit(100)
+        .exec();
+
+      if (ordersWithBase64.length > 0) {
+        this.logger.log(`🔄 Phát hiện ${ordersWithBase64.length} đơn hàng chứa ảnh Base64 cũ, bắt đầu tối ưu hóa...`);
+        let convertedCount = 0;
+        for (const order of ordersWithBase64) {
+          try {
+            if (order.imageUrl && order.imageUrl.startsWith('data:image/')) {
+              const staticUrl = this.uploadService.saveBase64(order.imageUrl);
+              order.imageUrl = staticUrl;
+              await order.save();
+              convertedCount++;
+            }
+          } catch (e) {
+            this.logger.warn(`Không thể chuyển đổi ảnh cho đơn ${order.orderCode}: ${e.message}`);
+          }
+        }
+        this.logger.log(`✅ Đã chuyển đổi thành công ${convertedCount} ảnh đơn hàng sang file tĩnh! Database đã được giải phóng.`);
+      }
+    } catch (err) {
+      this.logger.warn(`Lỗi khi quét ảnh base64 cũ: ${err.message}`);
+    }
+  }
+
+  /**
+   * Chuẩn hóa URL ảnh: nếu là base64 thì lưu thành file tĩnh ngay
+   */
+  private normalizeImageUrl(url?: string): string {
+    if (!url) return '';
+    if (url.startsWith('data:image/')) {
+      try {
+        return this.uploadService.saveBase64(url);
+      } catch (err) {
+        this.logger.warn(`Không thể lưu ảnh base64: ${err.message}`);
+      }
+    }
+    return url;
+  }
 
   async findAll(
     userId: string,
@@ -242,8 +293,43 @@ export class OrdersService {
       period?: string;
       fromDate?: string;
       toDate?: string;
+      page?: number;
+      limit?: number;
     },
   ) {
+    const periodKey = query?.period || (query?.fromDate ? `${query.fromDate}_${query?.toDate}` : 'all');
+    const page = query?.page && query.page > 0 ? Number(query.page) : 1;
+    const limit = query?.limit && query.limit > 0 ? Number(query.limit) : 0;
+    const cacheKey = `orders:list:${userId}:${periodKey}:${page}:${limit}`;
+
+    // Nếu không có search cụ thể, áp dụng cache nhanh 30s
+    if (!query?.search && (!query?.status || query?.status === 'ALL')) {
+      return this.cacheService.getOrSet(
+        cacheKey,
+        async () => {
+          const filter: any = { userId: new Types.ObjectId(userId) };
+          const { startDate, endDate } = calculateDateRange(query?.period, query?.fromDate, query?.toDate);
+          if (startDate || endDate) {
+            filter.orderDate = {};
+            if (startDate) filter.orderDate.$gte = startDate;
+            if (endDate) filter.orderDate.$lte = endDate;
+          }
+
+          let mQuery = this.orderModel
+            .find(filter)
+            .sort({ orderDate: -1, createdAt: -1 })
+            .lean();
+
+          if (limit > 0) {
+            mQuery = mQuery.skip((page - 1) * limit).limit(limit);
+          }
+
+          return mQuery.exec();
+        },
+        30,
+      );
+    }
+
     const filter: any = { userId: new Types.ObjectId(userId) };
 
     if (query?.status && query.status !== 'ALL') {
@@ -272,7 +358,16 @@ export class OrdersService {
       if (endDate) filter.orderDate.$lte = endDate;
     }
 
-    return this.orderModel.find(filter).sort({ orderDate: -1, createdAt: -1 }).exec();
+    let mQuery = this.orderModel
+      .find(filter)
+      .sort({ orderDate: -1, createdAt: -1 })
+      .lean();
+
+    if (limit > 0) {
+      mQuery = mQuery.skip((page - 1) * limit).limit(limit);
+    }
+
+    return mQuery.exec();
   }
 
   async getStats(
@@ -420,9 +515,11 @@ export class OrdersService {
     }
 
     const primaryCust = customers[0];
+    const imageUrl = dto.imageUrl ? this.normalizeImageUrl(dto.imageUrl) : dto.imageUrl;
 
     const newOrder = new this.orderModel({
       ...dto,
+      imageUrl,
       userId: new Types.ObjectId(userId),
       orderCode,
       customers,
@@ -445,6 +542,9 @@ export class OrdersService {
 
   async update(id: string, userId: string, dto: UpdateOrderDto) {
     const updateData: any = { ...dto };
+    if (dto.imageUrl !== undefined) {
+      updateData.imageUrl = this.normalizeImageUrl(dto.imageUrl);
+    }
 
     if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
     if (dto.shippingFee !== undefined) updateData.shippingFee = dto.shippingFee;

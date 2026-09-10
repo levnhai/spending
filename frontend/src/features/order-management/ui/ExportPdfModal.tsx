@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Order } from '@/entities/order';
 import { formatVND } from '@/shared/lib/formatters';
+import { getFullImageUrl } from '@/shared/lib/uploadApi';
 import { exportOrdersPdf, printOrders } from '../lib/exportOrdersPdf';
 
 interface ExportPdfModalProps {
@@ -289,7 +290,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                       <td className="py-2.5 px-3 text-center">
                         {row.imageUrl ? (
                           <img
-                            src={row.imageUrl}
+                            src={getFullImageUrl(row.imageUrl)}
                             alt={row.title}
                             className="w-10 h-10 object-cover rounded-xl border border-slate-200 dark:border-slate-700 mx-auto"
                           />

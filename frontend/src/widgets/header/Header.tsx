@@ -19,7 +19,6 @@ import {
   EyeOff,
   SlidersHorizontal,
   ShoppingBag,
-  ArrowLeftRight,
 } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
@@ -35,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenQuickAddOrder,
 }) => {
   const router = useRouter();
-  const { user, theme, toggleTheme, logout, showAmount, toggleShowAmount, role, switchRole } = useUserStore();
+  const { user, theme, toggleTheme, logout, showAmount, toggleShowAmount, role } = useUserStore();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -50,12 +49,6 @@ export const Header: React.FC<HeaderProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleToggleRole = () => {
-    const nextRole = userRole === 'PERSONAL' ? 'SALES' : 'PERSONAL';
-    switchRole(nextRole);
-    router.push('/dashboard');
-  };
 
   return (
     <header className="h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] px-4 md:px-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex items-center justify-between transition-colors duration-200 shadow-sm">
@@ -134,35 +127,25 @@ export const Header: React.FC<HeaderProps> = ({
                   {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                    {user?.fullName || 'Người dùng'}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                      {user?.fullName || 'Người dùng'}
+                    </p>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                        userRole === 'ADMIN'
+                          ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                          : userRole === 'SALES'
+                          ? 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+                          : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                      }`}
+                    >
+                      {userRole === 'ADMIN' ? 'Admin' : userRole === 'SALES' ? 'Bán hàng' : 'Cá nhân'}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-400 truncate">{user?.email || 'user@example.com'}</p>
                 </div>
               </div>
-
-              {/* Chuyển vai trò trong Menu Dropdown */}
-              <button
-                onClick={() => {
-                  handleToggleRole();
-                  setIsUserMenuOpen(false);
-                }}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center justify-between text-sm font-semibold transition-colors"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ArrowLeftRight className="w-4 h-4 text-indigo-500" />
-                  <span>Chế độ sử dụng</span>
-                </div>
-                <span
-                  className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${
-                    userRole === 'SALES'
-                      ? 'bg-orange-500/10 text-orange-500'
-                      : 'bg-emerald-500/10 text-emerald-500'
-                  }`}
-                >
-                  {userRole === 'SALES' ? 'Bán Hàng' : 'Cá Nhân'}
-                </span>
-              </button>
 
               {userRole === 'PERSONAL' && (
                 <>

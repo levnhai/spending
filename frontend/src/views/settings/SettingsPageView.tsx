@@ -14,18 +14,17 @@ import {
   Eye,
   EyeOff,
   ShoppingBag,
-  ArrowLeftRight,
 } from 'lucide-react';
 import { Header } from '@/widgets/header/Header';
 import { MenuListSettings } from '@/features/menu-settings';
-import { useUserStore, UserRoleType } from '@/entities/user/useUserStore';
+import { useUserStore } from '@/entities/user/useUserStore';
 import { api } from '@/shared/lib/api';
 
 export const SettingsPageView: React.FC = () => {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'menu';
 
-  const { user, setUser, theme, toggleTheme, showAmount, toggleShowAmount, role, switchRole } =
+  const { user, setUser, theme, toggleTheme, showAmount, toggleShowAmount, role } =
     useUserStore();
 
   const [activeTab, setActiveTab] = useState<'menu' | 'profile' | 'display'>(
@@ -36,7 +35,6 @@ export const SettingsPageView: React.FC = () => {
 
   // Profile Form State
   const [fullName, setFullName] = useState(user?.fullName || '');
-  const [selectedRole, setSelectedRole] = useState<UserRoleType>(userRole);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
@@ -51,9 +49,8 @@ export const SettingsPageView: React.FC = () => {
   useEffect(() => {
     if (user?.fullName) {
       setFullName(user.fullName);
-      setSelectedRole(role || user.role || 'PERSONAL');
     }
-  }, [user, role]);
+  }, [user]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,10 +58,8 @@ export const SettingsPageView: React.FC = () => {
     try {
       const res = await api.put('/auth/profile', {
         fullName,
-        role: selectedRole,
       });
       setUser(res.data);
-      switchRole(selectedRole);
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err: any) {
@@ -171,57 +166,23 @@ export const SettingsPageView: React.FC = () => {
                     <p className="text-sm text-slate-400">{user?.email}</p>
                     <span
                       className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                        userRole === 'SALES'
-                          ? 'bg-orange-500/10 text-orange-500'
-                          : 'bg-emerald-500/10 text-emerald-500'
+                        userRole === 'ADMIN'
+                          ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                          : userRole === 'SALES'
+                          ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       }`}
                     >
-                      {userRole === 'SALES' ? 'Chế độ Bán Hàng' : 'Chế độ Cá Nhân'}
+                      {userRole === 'ADMIN'
+                        ? 'Vai trò: Quản Trị Viên'
+                        : userRole === 'SALES'
+                        ? 'Vai trò: Bán Hàng'
+                        : 'Vai trò: Cá Nhân'}
                     </span>
                   </div>
                 </div>
 
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  {/* Select Chế độ / Vai trò */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      Chế độ sử dụng (Vai trò)
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRole('PERSONAL')}
-                        className={`p-3.5 rounded-2xl border flex items-center gap-3 transition-all ${
-                          selectedRole === 'PERSONAL'
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <User className="w-5 h-5 shrink-0" />
-                        <div className="text-left text-xs">
-                          <p className="font-bold">Cá Nhân</p>
-                          <p className="text-[10px] opacity-70">Thu chi, ví, tiết kiệm</p>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRole('SALES')}
-                        className={`p-3.5 rounded-2xl border flex items-center gap-3 transition-all ${
-                          selectedRole === 'SALES'
-                            ? 'border-orange-500 bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold shadow-sm'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <ShoppingBag className="w-5 h-5 shrink-0" />
-                        <div className="text-left text-xs">
-                          <p className="font-bold">Bán Hàng</p>
-                          <p className="text-[10px] opacity-70">Đơn hàng, doanh số</p>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
                       Họ và tên

@@ -19,6 +19,8 @@ import { NotesModule } from './modules/notes/notes.module';
 import { DebtsModule } from './modules/debts/debts.module';
 import { MonthlyPlansModule } from './modules/monthly-plans/monthly-plans.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { AppCacheModule } from './common/cache/app-cache.module';
 
 @Module({
@@ -51,6 +53,8 @@ import { AppCacheModule } from './common/cache/app-cache.module';
     DebtsModule,
     MonthlyPlansModule,
     OrdersModule,
+    AdminModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -30,6 +30,7 @@ import {
 } from '@/entities/order';
 import { formatVND, formatNumberWithSpaces, parseFormattedNumber } from '@/shared/lib/formatters';
 import { compressImageFile } from '@/shared/lib/imageUtils';
+import { uploadOrderImage, getFullImageUrl } from '@/shared/lib/uploadApi';
 
 interface AddEditOrderModalProps {
   isOpen: boolean;
@@ -88,9 +89,11 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
 
     setIsCompressingImage(true);
     try {
-      // Nâng kích thước tối đa lên 1600x1600 để ảnh sắc nét, rõ ràng
-      const compressedDataUrl = await compressImageFile(file, 1600, 1600, 0.85);
-      setImageUrl(compressedDataUrl);
+      // Nén ảnh độ phân giải tối ưu 1200px, đảm bảo sắc nét
+      const compressedDataUrl = await compressImageFile(file, 1200, 1200, 0.8);
+      // Upload trực tiếp lên backend và lưu file tĩnh WebP
+      const savedUrl = await uploadOrderImage(compressedDataUrl);
+      setImageUrl(savedUrl);
     } catch (err: any) {
       alert(err.message || 'Không thể xử lý hình ảnh');
     } finally {
@@ -485,7 +488,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                         title="Bấm để xem ảnh phóng to"
                       >
                         <img
-                          src={imageUrl}
+                          src={getFullImageUrl(imageUrl)}
                           alt="Xem trước ảnh đơn hàng"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                         />
@@ -559,7 +562,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                         title="Bấm để xem ảnh phóng to"
                       >
                         <img
-                          src={imageUrl}
+                          src={getFullImageUrl(imageUrl)}
                           alt="Xem trước"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           onError={(e) => {
@@ -1088,7 +1091,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={previewFullImage}
+              src={getFullImageUrl(previewFullImage)}
               alt="Ảnh phóng to"
               className="max-h-[82vh] w-auto max-w-full object-contain rounded-2xl"
             />

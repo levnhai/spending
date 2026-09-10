@@ -57,6 +57,13 @@ export class AppCacheService {
       promises.push(this.del(`${ns}:${userId}:week`));
       promises.push(this.del(`${ns}:${userId}:month`));
       promises.push(this.del(`${ns}:${userId}:year`));
+      // Xóa các key dạng list
+      promises.push(this.del(`${ns}:list:${userId}`));
+      promises.push(this.del(`${ns}:list:${userId}:all`));
+      promises.push(this.del(`${ns}:list:${userId}:today`));
+      promises.push(this.del(`${ns}:list:${userId}:week`));
+      promises.push(this.del(`${ns}:list:${userId}:month`));
+      promises.push(this.del(`${ns}:list:${userId}:year`));
     }
     await Promise.allSettled(promises);
   }

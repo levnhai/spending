@@ -34,6 +34,8 @@ export class OrdersController {
     @Query('period') period?: string,
     @Query('fromDate') fromDate?: string,
     @Query('toDate') toDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.ordersService.findAll(req.user.userId, {
       search,
@@ -41,6 +43,8 @@ export class OrdersController {
       period,
       fromDate,
       toDate,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
     });
   }
 

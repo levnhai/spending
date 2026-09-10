@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/shared/lib/api';
 
-export type UserRoleType = 'PERSONAL' | 'SALES';
+export type UserRoleType = 'PERSONAL' | 'SALES' | 'ADMIN';
 
 export interface User {
   id: string;

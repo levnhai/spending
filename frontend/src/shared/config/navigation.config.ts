@@ -11,9 +11,10 @@ import {
   StickyNote,
   ShoppingBag,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 
-export type UserRoleType = 'PERSONAL' | 'SALES';
+export type UserRoleType = 'PERSONAL' | 'SALES' | 'ADMIN';
 
 export interface MenuItemConfig {
   id: string;
@@ -40,7 +41,18 @@ export const APP_NAVIGATION_ITEMS: MenuItemConfig[] = [
     group: 'core',
     description: 'Bảng điều khiển và thống kê dòng tiền tổng thể',
     isMandatory: true,
-    allowedRoles: ['PERSONAL', 'SALES'],
+    allowedRoles: ['PERSONAL', 'SALES', 'ADMIN'],
+  },
+  {
+    id: 'admin',
+    name: 'Quản Trị Hệ Thống',
+    href: '/admin',
+    icon: ShieldCheck,
+    category: 'core',
+    group: 'core',
+    description: 'Quản lý người dùng, phân quyền và giám sát hệ thống',
+    isMandatory: true,
+    allowedRoles: ['ADMIN'],
   },
   {
     id: 'orders',
@@ -144,7 +156,7 @@ export const APP_NAVIGATION_ITEMS: MenuItemConfig[] = [
     category: 'tools',
     group: 'tools',
     description: 'Ghi chú tài chính và lưu trữ thông tin cần thiết',
-    allowedRoles: ['PERSONAL', 'SALES'],
+    allowedRoles: ['PERSONAL', 'SALES', 'ADMIN'],
   },
   {
     id: 'settings',
@@ -155,7 +167,7 @@ export const APP_NAVIGATION_ITEMS: MenuItemConfig[] = [
     group: 'tools',
     description: 'Tùy biến menu, thông tin tài khoản và giao diện',
     isMandatory: true,
-    allowedRoles: ['PERSONAL', 'SALES'],
+    allowedRoles: ['PERSONAL', 'SALES', 'ADMIN'],
   },
 ];
 

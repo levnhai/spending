@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { Order } from '@/entities/order';
 import { formatVND } from '@/shared/lib/formatters';
+import { getFullImageUrl } from '@/shared/lib/uploadApi';
 
 export interface CustomerExportInfo {
   name: string;
@@ -19,12 +20,13 @@ export interface ExportPdfOptions {
 // Tải ảnh an toàn để vẽ lên canvas
 async function loadSafeImage(url?: string): Promise<HTMLImageElement | null> {
   if (!url) return null;
+  const fullUrl = getFullImageUrl(url);
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = url;
+    img.src = fullUrl;
   });
 }
 
@@ -459,7 +461,7 @@ export async function printOrders(options: ExportPdfOptions): Promise<void> {
           <div style="font-family: monospace; color: #059669; font-size: 11px;">[${o.orderCode}]</div>
         </td>
         <td style="padding: 6px 8px; text-align: center;">
-          ${o.imageUrl ? `<img src="${o.imageUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px;" />` : '-'}
+          ${o.imageUrl ? `<img src="${getFullImageUrl(o.imageUrl)}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px;" />` : '-'}
         </td>
         <td style="padding: 10px 8px; text-align: center; font-weight: bold;">${qty}</td>
         <td style="padding: 10px 10px; text-align: right;">${formatVND(unitPrice)}</td>

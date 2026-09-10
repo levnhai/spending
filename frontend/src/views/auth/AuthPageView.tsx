@@ -50,7 +50,7 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({ onSuccess }) => {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-3">
             <TrendingUp className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">FinFlow Expense</h1>
+          <h1 className="text-2xl font-bold tracking-tight">2H Expense</h1>
           <p className="text-sm text-slate-400 mt-1">Quản lý chi tiêu cá nhân thông minh</p>
         </div>
 

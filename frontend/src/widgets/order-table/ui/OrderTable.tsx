@@ -22,6 +22,7 @@ import { AmountDisplay } from '@/shared/ui/AmountDisplay';
 import { ConfirmModal } from '@/shared/ui/ConfirmModal';
 import { formatVND } from '@/shared/lib/formatters';
 import { useUserStore } from '@/entities/user/useUserStore';
+import { getFullImageUrl } from '@/shared/lib/uploadApi';
 
 interface OrderTableProps {
   orders: Order[];
@@ -294,7 +295,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                           title="Xem ảnh lớn"
                         >
                           <img
-                            src={order.imageUrl}
+                            src={getFullImageUrl(order.imageUrl)}
                             alt={order.title}
                             className="w-full h-full object-cover"
                           />
@@ -480,7 +481,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                       className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0"
                     >
                       <img
-                        src={order.imageUrl}
+                        src={getFullImageUrl(order.imageUrl)}
                         alt={order.title}
                         className="w-full h-full object-cover"
                       />
@@ -748,7 +749,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={previewImage}
+              src={getFullImageUrl(previewImage || '')}
               alt="Ảnh đơn hàng"
               className="max-h-[80vh] w-auto object-contain rounded-2xl mx-auto"
             />
@@ -948,7 +949,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                                 title="Xem ảnh lớn"
                               >
                                 <img
-                                  src={order.imageUrl}
+                                  src={getFullImageUrl(order.imageUrl)}
                                   alt={order.title}
                                   className="w-full h-full object-cover"
                                 />

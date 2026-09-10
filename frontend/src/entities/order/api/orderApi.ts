@@ -14,6 +14,8 @@ export const orderApi = {
     period?: string;
     fromDate?: string;
     toDate?: string;
+    page?: number;
+    limit?: number;
   }): Promise<Order[]> => {
     const res = await api.get('/orders', { params });
     return res.data;
