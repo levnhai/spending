@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/widgets/navigation/Sidebar';
 import { BottomNav } from '@/widgets/navigation/BottomNav';
-import { useUserStore } from '@/entities/user/useUserStore';
+import { useUserStore, isTokenExpired } from '@/entities/user/useUserStore';
 import { APP_NAVIGATION_ITEMS } from '@/shared/config/navigation.config';
 import { AuthPageView } from '@/views/auth/AuthPageView';
 import { AddTransactionModal } from '@/features/add-transaction/AddTransactionModal';
@@ -15,7 +15,7 @@ import { DevToolsGuard } from '@/shared/ui/DevToolsGuard';
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, token, role, initAuth } = useUserStore();
+  const { user, token, role, initAuth, logout } = useUserStore();
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
@@ -27,9 +27,19 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, [initAuth]);
 
+  // Lắng nghe sự kiện hết hạn token (401) để tự động đăng xuất và bắt buộc login lại
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      router.replace('/');
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [logout, router]);
+
   // Route Guard: Tự động chuyển về /dashboard nếu truy cập trang không thuộc Role hiện tại
   useEffect(() => {
-    if (!mounted || !token || !user) return;
+    if (!mounted || !token || !user || isTokenExpired(token)) return;
 
     const currentItem = APP_NAVIGATION_ITEMS.find((item) => {
       if (item.href === '/dashboard') return pathname === '/dashboard';
@@ -52,7 +62,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!token || !user) {
+  // Nếu chưa đăng nhập hoặc token đã hết hạn -> Bắt buộc hiển thị trang Login
+  if (!token || !user || isTokenExpired(token)) {
     return (
       <>
         <DevToolsGuard />

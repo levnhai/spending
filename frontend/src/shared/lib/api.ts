@@ -126,14 +126,15 @@ api.interceptors.response.use(
       const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/register');
 
       if (!isAuthRequest) {
-        console.warn('Phiên đăng nhập đã hết hạn hoặc không hợp lệ (401). Đang làm mới phiên...');
+        console.warn('Phiên đăng nhập đã hết hạn hoặc không hợp lệ (401). Đang chuyển về trang đăng nhập...');
         clearApiCache();
         localStorage.removeItem('auth_token');
         localStorage.removeItem('finflow_token');
         localStorage.removeItem('user-storage');
-        setTimeout(() => {
+        window.dispatchEvent(new Event('auth:unauthorized'));
+        if (window.location.pathname !== '/') {
           window.location.href = '/';
-        }, 200);
+        }
       }
     }
     return Promise.reject(error);
