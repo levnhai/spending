@@ -122,8 +122,19 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      console.warn('Unauthorized request, clearing cache and session...');
-      clearApiCache();
+      const url = error.config?.url || '';
+      const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/register');
+
+      if (!isAuthRequest) {
+        console.warn('Phiên đăng nhập đã hết hạn hoặc không hợp lệ (401). Đang làm mới phiên...');
+        clearApiCache();
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('finflow_token');
+        localStorage.removeItem('user-storage');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 200);
+      }
     }
     return Promise.reject(error);
   },
