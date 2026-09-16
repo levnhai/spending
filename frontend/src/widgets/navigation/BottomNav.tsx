@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Receipt, Plus, CalendarDays, PieChart, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, Receipt, Plus, CalendarDays, PieChart, ShoppingBag, Users } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
 interface BottomNavProps {
@@ -15,20 +15,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
   const { user, role } = useUserStore();
   const userRole = role || user?.role || 'PERSONAL';
 
-  // Menu cho chế độ BÁN HÀNG (SALES): Dashboard, (+) Thêm Đơn Hàng, Quản Lý Đơn Hàng
+  // Menu cho chế độ BÁN HÀNG (SALES): Dashboard, (+) Thêm Đơn, Đơn Hàng
   if (userRole === 'SALES') {
     const isDashboard = pathname === '/dashboard';
     const isOrders = pathname === '/orders';
 
     return (
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-6 z-40">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-8 z-40">
         {/* Tab 1: Dashboard */}
         <Link
           href="/dashboard"
           prefetch={true}
           className={`flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium transition-colors ${
             isDashboard
-              ? 'text-orange-500 font-bold'
+              ? 'text-emerald-500 font-bold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -37,16 +37,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
         </Link>
 
         {/* Nút giữa (+): Thêm Đơn Hàng */}
-        <div className="relative -top-4 flex flex-col items-center">
+        <div className="relative -top-4 flex flex-col items-center flex-1">
           <button
             onClick={onOpenQuickAdd}
-            className="w-14 h-14 rounded-full bg-gradient-to-tr from-orange-500 via-amber-500 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 active:scale-95 transition-transform cursor-pointer"
+            className="w-13 h-13 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform cursor-pointer"
             aria-label="Thêm đơn hàng mới"
             title="Thêm đơn hàng mới"
           >
-            <Plus className="w-7 h-7" />
+            <Plus className="w-6 h-6" />
           </button>
-          <span className="text-[10px] font-bold text-orange-500 dark:text-orange-400 mt-1">
+          <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 mt-1">
             Thêm đơn
           </span>
         </div>
@@ -57,7 +57,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
           prefetch={true}
           className={`flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium transition-colors ${
             isOrders
-              ? 'text-orange-500 font-bold'
+              ? 'text-emerald-500 font-bold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >

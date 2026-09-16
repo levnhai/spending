@@ -116,11 +116,17 @@ export const DashboardPageView: React.FC = () => {
     fetchData();
   }, [userRole, salesPeriod]);
 
-  const handleStatusChanged = (orderId: string, newStatus: OrderStatusType) => {
-    setRecentOrders((prev) =>
-      prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)),
-    );
-    orderApi.getStats({ period: salesPeriod }).then(setOrderStats).catch(() => {});
+  const handleStatusChanged = async (orderId: string, newStatus: OrderStatusType) => {
+    const prevOrders = [...recentOrders];
+    const updated = recentOrders.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o));
+    setRecentOrders(updated);
+
+    try {
+      await orderApi.updateStatus(orderId, newStatus);
+    } catch (err) {
+      console.error('Failed to update status in dashboard', err);
+      setRecentOrders(prevOrders);
+    }
   };
 
   const isPositiveProfit = (orderStats?.profit || 0) >= 0;

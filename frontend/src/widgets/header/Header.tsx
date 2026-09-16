@@ -19,6 +19,7 @@ import {
   EyeOff,
   SlidersHorizontal,
   ShoppingBag,
+  Users,
 } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
@@ -179,14 +180,25 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {userRole === 'SALES' && (
-                <Link
-                  href="/orders"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
-                >
-                  <ShoppingBag className="w-4 h-4 text-orange-500" />
-                  <span>Quản Lý Đơn Hàng</span>
-                </Link>
+                <>
+                  <Link
+                    href="/orders"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-orange-500" />
+                    <span>Quản Lý Đơn Hàng</span>
+                  </Link>
+
+                  <Link
+                    href="/customers"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 text-sm font-semibold transition-colors"
+                  >
+                    <Users className="w-4 h-4 text-amber-500" />
+                    <span>Quản Lý Khách Hàng</span>
+                  </Link>
+                </>
               )}
 
               <div className="border-t border-slate-100 dark:border-slate-800 my-1"></div>

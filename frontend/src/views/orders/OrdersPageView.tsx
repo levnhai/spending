@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus,
   Search,
@@ -10,7 +10,12 @@ import {
   Check,
 } from 'lucide-react';
 import { Header } from '@/widgets/header/Header';
-import { Order, OrderStats, OrderStatusType, orderApi } from '@/entities/order';
+import {
+  Order,
+  OrderStats,
+  OrderStatusType,
+  orderApi,
+} from '@/entities/order';
 import { AddEditOrderModal } from '@/features/order-management';
 import { OrderTable } from '@/widgets/order-table';
 
@@ -24,12 +29,21 @@ const STATUS_FILTERS = [
   { id: 'CANCELLED', label: 'Đã hủy', color: 'text-rose-500', dot: 'bg-rose-500' },
 ];
 
+const LIMIT = 20; // Giới hạn 20 đơn hàng mỗi trang
+
 export const OrdersPageView: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
-  const [loading, setLoading] = useState(true);
 
+  // Pagination & Infinite Scroll States
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Search & Filter States
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,6 +51,14 @@ export const OrdersPageView: React.FC = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
+
+  // Debounce 300ms khi gõ tìm kiếm để không gửi request thừa
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -49,31 +71,70 @@ export const OrdersPageView: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  // Tải thống kê tổng quan (cho toàn bộ đơn hàng)
+  const fetchStats = useCallback(async () => {
     try {
-      const [ordersRes, statsRes] = await Promise.all([
-        orderApi.getAll({
-          search: search.trim() || undefined,
-          status: statusFilter !== 'ALL' ? statusFilter : undefined,
-        }),
-        orderApi.getStats(),
-      ]);
-      setOrders(ordersRes);
+      const statsRes = await orderApi.getStats();
       setStats(statsRes);
     } catch (err) {
-      console.error('Failed to load orders', err);
+      console.error('Failed to load order stats', err);
+    }
+  }, []);
+
+  // Tải trang 1 (khi mở trang, đổi filter hoặc tìm kiếm)
+  const fetchFirstPage = useCallback(async () => {
+    setLoading(true);
+    setPage(1);
+    try {
+      const res = await orderApi.getAll({
+        page: 1,
+        limit: LIMIT,
+        search: debouncedSearch.trim() || undefined,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+      });
+
+      setOrders(res || []);
+      setHasMore((res || []).length === LIMIT);
+    } catch (err) {
+      console.error('Failed to load initial orders', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, statusFilter]);
+
+  // Tải tiếp 20 đơn tiếp theo khi người dùng cuộn tới đáy (Infinite Scroll)
+  const handleLoadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const res = await orderApi.getAll({
+        page: nextPage,
+        limit: LIMIT,
+        search: debouncedSearch.trim() || undefined,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+      });
+
+      if (res && res.length > 0) {
+        setOrders((prev) => [...prev, ...res]);
+        setPage(nextPage);
+        setHasMore(res.length === LIMIT);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Failed to load more orders', err);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [page, hasMore, loading, loadingMore, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      fetchData();
-    }, 250);
-    return () => clearTimeout(timeout);
-  }, [search, statusFilter]);
+    fetchFirstPage();
+    fetchStats();
+  }, [fetchFirstPage, fetchStats]);
 
   const handleCreateNew = () => {
     setOrderToEdit(null);
@@ -85,14 +146,32 @@ export const OrdersPageView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleStatusChanged = (orderId: string, newStatus: OrderStatusType) => {
+  // Optimistic Update khi đổi trạng thái đơn
+  const handleStatusChanged = async (orderId: string, newStatus: OrderStatusType) => {
+    const previousOrders = [...orders];
+
+    // Đổi ngay trên giao diện trong 1ms
     setOrders((prev) =>
       prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)),
     );
-    orderApi.getStats().then(setStats).catch(() => {});
+
+    try {
+      await orderApi.updateStatus(orderId, newStatus);
+      fetchStats();
+    } catch (err) {
+      console.error('Failed to update status, rolling back', err);
+      setOrders(previousOrders);
+      alert('Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại!');
+    }
   };
 
-  const currentSelectedFilter = STATUS_FILTERS.find((f) => f.id === statusFilter) || STATUS_FILTERS[0];
+  const handleSuccessSave = () => {
+    fetchFirstPage();
+    fetchStats();
+  };
+
+  const currentSelectedFilter =
+    STATUS_FILTERS.find((f) => f.id === statusFilter) || STATUS_FILTERS[0];
 
   return (
     <div className="min-h-screen pb-20 md:pb-8 space-y-5 w-full">
@@ -103,23 +182,23 @@ export const OrdersPageView: React.FC = () => {
       />
 
       <main className="px-4 md:px-8 space-y-4 w-full">
-        {/* Unified Action & Filter Toolbar trên 1 hàng duy nhất */}
+        {/* Unified Action & Filter Toolbar */}
         <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800/80 shadow-sm w-full">
-          {/* Group: Search & Status Select trên 1 hàng */}
+          {/* Group: Search & Status Select */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* 1. Search Input */}
+            {/* Search Input với Debounce 300ms */}
             <div className="relative flex-1 min-w-0">
               <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm đơn, khách, SĐT..."
+                placeholder="Tìm mã đơn, tên hàng, tên khách, SĐT (Toàn hệ thống)..."
                 className="w-full pl-8 sm:pl-9 pr-3 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/40 shadow-sm"
               />
             </div>
 
-            {/* 2. Custom Dropdown Select Trạng Thái */}
+            {/* Dropdown Trạng Thái */}
             <div className="relative w-36 sm:w-52 shrink-0" ref={dropdownRef}>
               <button
                 type="button"
@@ -129,7 +208,9 @@ export const OrdersPageView: React.FC = () => {
                 <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <Filter className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 shrink-0" />
                   <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${currentSelectedFilter.dot}`} />
-                  <span className="truncate font-bold text-[11px] sm:text-xs">{currentSelectedFilter.label}</span>
+                  <span className="truncate font-bold text-[11px] sm:text-xs">
+                    {currentSelectedFilter.label}
+                  </span>
                 </div>
                 <ChevronDown
                   className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${
@@ -170,10 +251,13 @@ export const OrdersPageView: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Group: Refresh & Tạo Đơn Hàng (Ẩn trên mobile vì đã có BottomNav và vuốt làm mới) */}
+          {/* Right Group: Refresh & Tạo Đơn Hàng */}
           <div className="hidden sm:flex items-center gap-2 self-end sm:self-auto shrink-0">
             <button
-              onClick={fetchData}
+              onClick={() => {
+                fetchFirstPage();
+                fetchStats();
+              }}
               className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
               title="Làm mới dữ liệu"
             >
@@ -190,12 +274,15 @@ export const OrdersPageView: React.FC = () => {
           </div>
         </div>
 
-        {/* Order Table Component */}
+        {/* Order Table Component với Infinite Scroll */}
         <OrderTable
           orders={orders}
           loading={loading}
+          loadingMore={loadingMore}
+          hasMore={hasMore}
+          onLoadMore={handleLoadMore}
           onEdit={handleEdit}
-          onDeleted={fetchData}
+          onDeleted={handleSuccessSave}
           onStatusChanged={handleStatusChanged}
         />
       </main>
@@ -207,7 +294,7 @@ export const OrdersPageView: React.FC = () => {
           setIsModalOpen(false);
           setOrderToEdit(null);
         }}
-        onSuccess={fetchData}
+        onSuccess={handleSuccessSave}
         orderToEdit={orderToEdit}
       />
     </div>

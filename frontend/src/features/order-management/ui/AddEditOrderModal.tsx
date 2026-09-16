@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Plus,
@@ -18,7 +18,7 @@ import {
   Loader2,
   Maximize2,
   Eye,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   Order,
   OrderCustomer,
@@ -27,10 +27,15 @@ import {
   PaymentStatusType,
   ORDER_STATUS_CONFIG,
   orderApi,
-} from '@/entities/order';
-import { formatVND, formatNumberWithSpaces, parseFormattedNumber } from '@/shared/lib/formatters';
-import { compressImageFile } from '@/shared/lib/imageUtils';
-import { uploadOrderImage, getFullImageUrl } from '@/shared/lib/uploadApi';
+} from "@/entities/order";
+import { Customer, customerApi } from "@/entities/customer";
+import {
+  formatVND,
+  formatNumberWithSpaces,
+  parseFormattedNumber,
+} from "@/shared/lib/formatters";
+import { compressImageFile } from "@/shared/lib/imageUtils";
+import { uploadOrderImage, getFullImageUrl } from "@/shared/lib/uploadApi";
 
 interface AddEditOrderModalProps {
   isOpen: boolean;
@@ -40,16 +45,16 @@ interface AddEditOrderModalProps {
 }
 
 const createEmptyCustomer = (): OrderCustomer => ({
-  name: '',
-  phone: '',
-  facebookUrl: '',
+  name: "",
+  phone: "",
+  facebookUrl: "",
   quantity: 1,
   amount: 0,
   paidAmount: 0,
-  orderDate: new Date().toISOString().split('T')[0],
-  status: 'ORDERED',
-  paymentStatus: 'UNPAID',
-  note: '',
+  orderDate: new Date().toISOString().split("T")[0],
+  status: "ORDERED",
+  paymentStatus: "UNPAID",
+  note: "",
 });
 
 export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
@@ -60,28 +65,44 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
 }) => {
   const isEditing = Boolean(orderToEdit);
 
-  const [title, setTitle] = useState('');
-  const [orderCode, setOrderCode] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
+  const [title, setTitle] = useState("");
+  const [orderCode, setOrderCode] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageInputMode, setImageInputMode] = useState<"upload" | "url">(
+    "upload",
+  );
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [previewFullImage, setPreviewFullImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [costPriceStr, setCostPriceStr] = useState('');
-  const [shippingFeeStr, setShippingFeeStr] = useState('');
+  const [costPriceStr, setCostPriceStr] = useState("");
+  const [shippingFeeStr, setShippingFeeStr] = useState("");
   const [customers, setCustomers] = useState<OrderCustomer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [availableCustomers, setAvailableCustomers] = useState<Customer[]>([]);
 
   // Sub-modal state for Customer
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [editingCustomerIndex, setEditingCustomerIndex] = useState<number | null>(null);
-  const [custForm, setCustForm] = useState<OrderCustomer>(createEmptyCustomer());
-  const [custQuantityStr, setCustQuantityStr] = useState('1');
-  const [custAmountStr, setCustAmountStr] = useState('');
-  const [custPaidAmountStr, setCustPaidAmountStr] = useState('');
-  const [custError, setCustError] = useState('');
+  const [editingCustomerIndex, setEditingCustomerIndex] = useState<
+    number | null
+  >(null);
+  const [custForm, setCustForm] = useState<OrderCustomer>(
+    createEmptyCustomer(),
+  );
+  const [custQuantityStr, setCustQuantityStr] = useState("1");
+  const [custAmountStr, setCustAmountStr] = useState("");
+  const [custPaidAmountStr, setCustPaidAmountStr] = useState("");
+  const [custError, setCustError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      customerApi
+        .getAll()
+        .then((res) => setAvailableCustomers(res))
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,67 +116,76 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       const savedUrl = await uploadOrderImage(compressedDataUrl);
       setImageUrl(savedUrl);
     } catch (err: any) {
-      alert(err.message || 'Không thể xử lý hình ảnh');
+      alert(err.message || "Không thể xử lý hình ảnh");
     } finally {
       setIsCompressingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   useEffect(() => {
     if (orderToEdit) {
-      setTitle(orderToEdit.title || '');
-      setOrderCode(orderToEdit.orderCode || '');
-      setImageUrl(orderToEdit.imageUrl || '');
-      setCostPriceStr(orderToEdit.costPrice ? formatNumberWithSpaces(orderToEdit.costPrice) : '');
-      setShippingFeeStr(orderToEdit.shippingFee ? formatNumberWithSpaces(orderToEdit.shippingFee) : '');
+      setTitle(orderToEdit.title || "");
+      setOrderCode(orderToEdit.orderCode || "");
+      setImageUrl(orderToEdit.imageUrl || "");
+      setCostPriceStr(
+        orderToEdit.costPrice
+          ? formatNumberWithSpaces(orderToEdit.costPrice)
+          : "",
+      );
+      setShippingFeeStr(
+        orderToEdit.shippingFee
+          ? formatNumberWithSpaces(orderToEdit.shippingFee)
+          : "",
+      );
 
       if (orderToEdit.customers && orderToEdit.customers.length > 0) {
         setCustomers(
           orderToEdit.customers.map((c) => ({
-            name: c.name || '',
-            phone: c.phone || '',
-            facebookUrl: c.facebookUrl || '',
-            quantity: c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
+            name: c.name || "",
+            phone: c.phone || "",
+            facebookUrl: c.facebookUrl || "",
+            quantity:
+              c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
             amount: c.amount || 0,
             paidAmount: c.paidAmount || 0,
             orderDate: c.orderDate
-              ? new Date(c.orderDate).toISOString().split('T')[0]
-              : new Date().toISOString().split('T')[0],
-            status: c.status || 'ORDERED',
-            paymentStatus: c.paymentStatus || 'UNPAID',
-            note: c.note || '',
+              ? new Date(c.orderDate).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+            status: c.status || "ORDERED",
+            paymentStatus: c.paymentStatus || "UNPAID",
+            note: c.note || "",
           })),
         );
       } else if (orderToEdit.customerName) {
         setCustomers([
           {
             name: orderToEdit.customerName,
-            phone: orderToEdit.customerPhone || '',
-            facebookUrl: '',
+            phone: orderToEdit.customerPhone || "",
+            facebookUrl: "",
             quantity: 1,
             amount: orderToEdit.totalAmount || 0,
             paidAmount: orderToEdit.paidAmount || 0,
             orderDate: orderToEdit.orderDate
-              ? new Date(orderToEdit.orderDate).toISOString().split('T')[0]
-              : new Date().toISOString().split('T')[0],
-            status: orderToEdit.status || 'ORDERED',
-            paymentStatus: orderToEdit.paymentStatus || 'UNPAID',
-            note: orderToEdit.note || '',
+              ? new Date(orderToEdit.orderDate).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+            status: orderToEdit.status || "ORDERED",
+            paymentStatus: orderToEdit.paymentStatus || "UNPAID",
+            note: orderToEdit.note || "",
           },
         ]);
       } else {
         setCustomers([]);
       }
     } else {
-      setTitle('');
-      setOrderCode('');
-      setImageUrl('');
-      setCostPriceStr('');
-      setShippingFeeStr('');
+      setTitle("");
+      setOrderCode("");
+      setImageUrl("");
+      setCostPriceStr("");
+      setShippingFeeStr("");
       setCustomers([]);
     }
-    setError('');
+    setError("");
   }, [orderToEdit, isOpen]);
 
   if (!isOpen) return null;
@@ -172,17 +202,20 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     (sum, c) => sum + (Number(c.paidAmount) || 0),
     0,
   );
-  const calculatedRemaining = Math.max(0, calculatedTotalAmount - calculatedPaidAmount);
+  const calculatedRemaining = Math.max(
+    0,
+    calculatedTotalAmount - calculatedPaidAmount,
+  );
   const estimatedProfit = calculatedTotalAmount - shippingFee - costPrice;
 
   // Mở Modal Thêm mới khách hàng
   const handleOpenAddCustomerModal = () => {
     setEditingCustomerIndex(null);
     setCustForm(createEmptyCustomer());
-    setCustQuantityStr('1');
-    setCustAmountStr('');
-    setCustPaidAmountStr('');
-    setCustError('');
+    setCustQuantityStr("1");
+    setCustAmountStr("");
+    setCustPaidAmountStr("");
+    setCustError("");
     setIsCustomerModalOpen(true);
   };
 
@@ -192,9 +225,13 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     const target = customers[index];
     setCustForm({ ...target });
     setCustQuantityStr(String(target.quantity || 1));
-    setCustAmountStr(target.amount ? formatNumberWithSpaces(target.amount) : '');
-    setCustPaidAmountStr(target.paidAmount ? formatNumberWithSpaces(target.paidAmount) : '');
-    setCustError('');
+    setCustAmountStr(
+      target.amount ? formatNumberWithSpaces(target.amount) : "",
+    );
+    setCustPaidAmountStr(
+      target.paidAmount ? formatNumberWithSpaces(target.paidAmount) : "",
+    );
+    setCustError("");
     setIsCustomerModalOpen(true);
   };
 
@@ -202,35 +239,35 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const handleSaveCustomer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!custForm.name.trim()) {
-      setCustError('Vui lòng nhập họ và tên khách hàng');
+      setCustError("Vui lòng nhập họ và tên khách hàng");
       return;
     }
 
     const total = parseFormattedNumber(custAmountStr);
     const paid = parseFormattedNumber(custPaidAmountStr);
     const qty = Math.max(1, parseInt(custQuantityStr) || 1);
-    let paymentStatus: PaymentStatusType = custForm.paymentStatus || 'UNPAID';
+    let paymentStatus: PaymentStatusType = custForm.paymentStatus || "UNPAID";
 
     if (paid >= total && total > 0) {
-      paymentStatus = 'PAID';
+      paymentStatus = "PAID";
     } else if (paid > 0) {
-      paymentStatus = 'PARTIAL';
+      paymentStatus = "PARTIAL";
     } else {
-      paymentStatus = 'UNPAID';
+      paymentStatus = "UNPAID";
     }
 
     const newCustomerData: OrderCustomer = {
       ...custForm,
       name: custForm.name.trim(),
-      phone: custForm.phone?.trim() || '',
-      facebookUrl: custForm.facebookUrl?.trim() || '',
+      phone: custForm.phone?.trim() || "",
+      facebookUrl: custForm.facebookUrl?.trim() || "",
       quantity: qty,
       amount: total,
       paidAmount: paid,
       paymentStatus,
-      status: custForm.status || 'ORDERED',
-      orderDate: custForm.orderDate || new Date().toISOString().split('T')[0],
-      note: custForm.note?.trim() || '',
+      status: custForm.status || "ORDERED",
+      orderDate: custForm.orderDate || new Date().toISOString().split("T")[0],
+      note: custForm.note?.trim() || "",
     };
 
     if (editingCustomerIndex !== null) {
@@ -255,17 +292,17 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError('Vui lòng nhập Tên đơn hàng');
+      setError("Vui lòng nhập Tên đơn hàng");
       return;
     }
 
     if (customers.length === 0) {
-      setError('Vui lòng thêm ít nhất 1 khách hàng vào đơn hàng');
+      setError("Vui lòng thêm ít nhất 1 khách hàng vào đơn hàng");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     const payload: CreateOrderPayload = {
       title: title.trim(),
@@ -275,7 +312,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       shippingFee: Number(shippingFee) || 0,
       customers: customers.map((c) => ({
         ...c,
-        orderDate: c.orderDate ? new Date(c.orderDate).toISOString() : new Date().toISOString(),
+        orderDate: c.orderDate
+          ? new Date(c.orderDate).toISOString()
+          : new Date().toISOString(),
       })),
       totalAmount: calculatedTotalAmount,
       paidAmount: calculatedPaidAmount,
@@ -291,7 +330,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Có lỗi xảy ra khi lưu đơn hàng');
+      setError(
+        err?.response?.data?.message || "Có lỗi xảy ra khi lưu đơn hàng",
+      );
     } finally {
       setLoading(false);
     }
@@ -310,7 +351,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  {isEditing ? 'Chỉnh Sửa Đơn Hàng' : 'Tạo Đơn Hàng Mới'}
+                  {isEditing ? "Chỉnh Sửa Đơn Hàng" : "Tạo Đơn Hàng Mới"}
                 </h3>
                 <p className="text-xs text-slate-400">
                   Nhập thông tin sản phẩm, giá vốn, tiền ship và khách hàng
@@ -327,7 +368,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+          <form
+            onSubmit={handleSubmit}
+            className="p-6 space-y-4 overflow-y-auto flex-1 text-xs"
+          >
             {error && (
               <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-semibold">
                 {error}
@@ -338,7 +382,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                  Tên đơn hàng / Sản phẩm <span className="text-rose-500">*</span>
+                  Tên đơn hàng / Sản phẩm{" "}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -383,11 +428,17 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   inputMode="numeric"
                   maxLength={14}
                   value={costPriceStr}
-                  onChange={(e) => setCostPriceStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                  onChange={(e) =>
+                    setCostPriceStr(
+                      e.target.value.replace(/\D/g, "").slice(0, 14),
+                    )
+                  }
                   placeholder="0"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
-                <span className="text-[10px] text-slate-400 block mt-0.5">Giá nhập/vốn của sản phẩm</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Giá nhập/vốn của sản phẩm
+                </span>
               </div>
 
               <div>
@@ -407,11 +458,17 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   inputMode="numeric"
                   maxLength={14}
                   value={shippingFeeStr}
-                  onChange={(e) => setShippingFeeStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                  onChange={(e) =>
+                    setShippingFeeStr(
+                      e.target.value.replace(/\D/g, "").slice(0, 14),
+                    )
+                  }
                   placeholder="0"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
-                <span className="text-[10px] text-slate-400 block mt-0.5">Tiền ship trả cho bên vận chuyển</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Tiền ship trả cho bên vận chuyển
+                </span>
               </div>
             </div>
 
@@ -425,22 +482,22 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 <div className="flex items-center gap-1 text-[11px] bg-slate-200/60 dark:bg-slate-900/60 p-1 rounded-xl">
                   <button
                     type="button"
-                    onClick={() => setImageInputMode('upload')}
+                    onClick={() => setImageInputMode("upload")}
                     className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      imageInputMode === 'upload'
-                        ? 'bg-emerald-500 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+                      imageInputMode === "upload"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-700 dark:hover:text-white"
                     }`}
                   >
                     Tải ảnh lên
                   </button>
                   <button
                     type="button"
-                    onClick={() => setImageInputMode('url')}
+                    onClick={() => setImageInputMode("url")}
                     className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      imageInputMode === 'url'
-                        ? 'bg-emerald-500 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+                      imageInputMode === "url"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-700 dark:hover:text-white"
                     }`}
                   >
                     Dán URL
@@ -449,7 +506,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               </div>
 
               {/* Mode 1: Upload File Ảnh */}
-              {imageInputMode === 'upload' ? (
+              {imageInputMode === "upload" ? (
                 <div>
                   <input
                     ref={fileInputRef}
@@ -472,10 +529,13 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {isCompressingImage ? 'Đang xử lý và tối ưu ảnh độ nét cao...' : 'Nhấn để chọn ảnh từ máy tính / điện thoại'}
+                          {isCompressingImage
+                            ? "Đang xử lý và tối ưu ảnh độ nét cao..."
+                            : "Nhấn để chọn ảnh từ máy tính / điện thoại"}
                         </p>
                         <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                          Hỗ trợ PNG, JPG, JPEG, WEBP • Tối ưu độ phân giải cao 1600px sắc nét
+                          Hỗ trợ PNG, JPG, JPEG, WEBP • Tối ưu độ phân giải cao
+                          1600px sắc nét
                         </p>
                       </div>
                     </div>
@@ -508,7 +568,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                         </div>
 
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                          Hình ảnh đã được nén tối ưu độ nét cao (1600px), rõ ràng chi tiết sản phẩm và hóa đơn chứng từ.
+                          Hình ảnh đã được nén tối ưu độ nét cao (1600px), rõ
+                          ràng chi tiết sản phẩm và hóa đơn chứng từ.
                         </p>
 
                         <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -530,7 +591,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => setImageUrl('')}
+                            onClick={() => setImageUrl("")}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -566,7 +627,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                           alt="Xem trước"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
+                            (e.target as HTMLElement).style.display = "none";
                           }}
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-bold backdrop-blur-[2px]">
@@ -589,7 +650,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => setImageUrl('')}
+                            onClick={() => setImageUrl("")}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -624,19 +685,23 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               {customers.length === 0 ? (
                 <div className="p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
                   <Users className="w-8 h-8 mx-auto text-slate-400" />
-                  <p className="text-xs text-slate-500">Chưa có khách hàng nào trong đơn này</p>
+                  <p className="text-xs text-slate-500">
+                    Chưa có khách hàng nào trong đơn này
+                  </p>
                   <button
                     type="button"
                     onClick={handleOpenAddCustomerModal}
                     className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"
                   >
-                    + Thêm Khách Hàng
+                    Thêm Khách Hàng
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {customers.map((c, idx) => {
-                    const statusConfig = ORDER_STATUS_CONFIG[c.status || 'ORDERED'] || ORDER_STATUS_CONFIG.ORDERED;
+                    const statusConfig =
+                      ORDER_STATUS_CONFIG[c.status || "ORDERED"] ||
+                      ORDER_STATUS_CONFIG.ORDERED;
                     const cAmount = Number(c.amount) || 0;
                     const cPaid = Number(c.paidAmount) || 0;
                     const cRemaining = Math.max(0, cAmount - cPaid);
@@ -684,9 +749,14 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                               {formatVND(cAmount)}
                             </span>
                             <span className="text-[10px] text-slate-400 block">
-                              Đã thu: <strong className="text-emerald-500">{formatVND(cPaid)}</strong>
+                              Đã thu:{" "}
+                              <strong className="text-emerald-500">
+                                {formatVND(cPaid)}
+                              </strong>
                               {cRemaining > 0 && (
-                                <span className="text-amber-500 ml-1">| Nợ: {formatVND(cRemaining)}</span>
+                                <span className="text-amber-500 ml-1">
+                                  | Nợ: {formatVND(cRemaining)}
+                                </span>
                               )}
                             </span>
                           </div>
@@ -721,26 +791,36 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             <div className="p-4 rounded-2xl bg-gradient-to-tr from-slate-50 to-slate-100 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200 dark:border-slate-700/80 space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Tổng Doanh Thu</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                    Tổng Doanh Thu
+                  </span>
                   <span className="font-extrabold text-sm text-slate-900 dark:text-white">
                     {formatVND(calculatedTotalAmount)}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Tiền Vốn</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                    Tiền Vốn
+                  </span>
                   <span className="font-extrabold text-sm text-amber-500">
                     {formatVND(costPrice)}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Phí Ship</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                    Phí Ship
+                  </span>
                   <span className="font-extrabold text-sm text-blue-500">
                     {formatVND(shippingFee)}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Lợi Nhuận Dự Kiến</span>
-                  <span className={`font-extrabold text-sm ${estimatedProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                    Lợi Nhuận Dự Kiến
+                  </span>
+                  <span
+                    className={`font-extrabold text-sm ${estimatedProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                  >
                     {formatVND(estimatedProfit)}
                   </span>
                 </div>
@@ -761,7 +841,11 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 disabled={loading}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs hover:opacity-95 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 cursor-pointer"
               >
-                {loading ? 'Đang lưu...' : isEditing ? 'Lưu Thay Đổi' : 'Tạo Đơn Hàng'}
+                {loading
+                  ? "Đang lưu..."
+                  : isEditing
+                    ? "Lưu Thay Đổi"
+                    : "Tạo Đơn Hàng"}
               </button>
             </div>
           </form>
@@ -784,7 +868,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 <h4 className="font-bold text-base text-slate-900 dark:text-white">
                   {editingCustomerIndex !== null
                     ? `Chỉnh Sửa Khách Hàng #${editingCustomerIndex + 1}`
-                    : 'Thêm Khách Hàng'}
+                    : "Thêm Khách Hàng"}
                 </h4>
               </div>
               <button
@@ -803,6 +887,48 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 </div>
               )}
 
+              {/* Gợi ý chọn nhanh từ danh bạ khách hàng */}
+              {availableCustomers.length > 0 && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                  <label className="block font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5 text-[11px]">
+                    💡 Chọn nhanh từ danh bạ khách hàng quen (
+                    {availableCustomers.length})
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      if (!selectedId) return;
+                      const found = availableCustomers.find(
+                        (c) => c._id === selectedId,
+                      );
+                      if (found) {
+                        setCustForm((prev) => ({
+                          ...prev,
+                          name: found.name,
+                          phone: found.phone || prev.phone || "",
+                          facebookUrl:
+                            found.facebookUrl || prev.facebookUrl || "",
+                          note: found.address
+                            ? `Địa chỉ: ${found.address}`
+                            : prev.note,
+                        }));
+                      }
+                    }}
+                    defaultValue=""
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-emerald-500/30 text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-emerald-500/40 outline-none text-xs"
+                  >
+                    <option value="">
+                      -- Chọn khách hàng đã có trong danh bạ --
+                    </option>
+                    {availableCustomers.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name} {c.phone ? `(${c.phone})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Tên khách hàng & Số điện thoại */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -812,7 +938,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <input
                     type="text"
                     value={custForm.name}
-                    onChange={(e) => setCustForm({ ...custForm, name: e.target.value })}
+                    onChange={(e) =>
+                      setCustForm({ ...custForm, name: e.target.value })
+                    }
                     placeholder="Nguyễn Văn A"
                     required
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/40 outline-none"
@@ -825,8 +953,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={custForm.phone || ''}
-                    onChange={(e) => setCustForm({ ...custForm, phone: e.target.value })}
+                    value={custForm.phone || ""}
+                    onChange={(e) =>
+                      setCustForm({ ...custForm, phone: e.target.value })
+                    }
                     placeholder="0912 345 678"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/40 outline-none"
                   />
@@ -842,8 +972,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <ExternalLink className="w-3.5 h-3.5 text-blue-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="url"
-                    value={custForm.facebookUrl || ''}
-                    onChange={(e) => setCustForm({ ...custForm, facebookUrl: e.target.value })}
+                    value={custForm.facebookUrl || ""}
+                    onChange={(e) =>
+                      setCustForm({ ...custForm, facebookUrl: e.target.value })
+                    }
                     placeholder="https://facebook.com/username-khach-hang"
                     className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/40 outline-none"
                   />
@@ -862,8 +994,12 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          const current = Math.max(1, parseInt(custQuantityStr) || 1);
-                          if (current > 1) setCustQuantityStr(String(current - 1));
+                          const current = Math.max(
+                            1,
+                            parseInt(custQuantityStr) || 1,
+                          );
+                          if (current > 1)
+                            setCustQuantityStr(String(current - 1));
                         }}
                         className="w-9 h-10 rounded-l-xl bg-slate-100 dark:bg-slate-800 border border-r-0 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
                         title="Giảm 1"
@@ -876,12 +1012,15 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                         maxLength={5}
                         value={custQuantityStr}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '');
+                          const val = e.target.value.replace(/\D/g, "");
                           setCustQuantityStr(val);
                         }}
                         onBlur={() => {
-                          if (!custQuantityStr || parseInt(custQuantityStr) < 1) {
-                            setCustQuantityStr('1');
+                          if (
+                            !custQuantityStr ||
+                            parseInt(custQuantityStr) < 1
+                          ) {
+                            setCustQuantityStr("1");
                           }
                         }}
                         placeholder="1"
@@ -891,7 +1030,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          const current = Math.max(1, parseInt(custQuantityStr) || 1);
+                          const current = Math.max(
+                            1,
+                            parseInt(custQuantityStr) || 1,
+                          );
                           setCustQuantityStr(String(current + 1));
                         }}
                         className="w-9 h-10 rounded-r-xl bg-slate-100 dark:bg-slate-800 border border-l-0 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
@@ -905,7 +1047,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">
-                        Tổng tiền cần thu <span className="text-rose-500">*</span>
+                        Tổng tiền cần thu{" "}
+                        <span className="text-rose-500">*</span>
                       </label>
                       {parseFormattedNumber(custAmountStr) > 0 && (
                         <span className="text-[11px] font-extrabold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-md shrink-0">
@@ -918,7 +1061,11 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       inputMode="numeric"
                       maxLength={14}
                       value={custAmountStr}
-                      onChange={(e) => setCustAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                      onChange={(e) =>
+                        setCustAmountStr(
+                          e.target.value.replace(/\D/g, "").slice(0, 14),
+                        )
+                      }
                       placeholder="0"
                       required
                       className="w-full h-10 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
@@ -941,7 +1088,11 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       inputMode="numeric"
                       maxLength={14}
                       value={custPaidAmountStr}
-                      onChange={(e) => setCustPaidAmountStr(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                      onChange={(e) =>
+                        setCustPaidAmountStr(
+                          e.target.value.replace(/\D/g, "").slice(0, 14),
+                        )
+                      }
                       placeholder="0"
                       className="w-full h-10 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/40 outline-none"
                     />
@@ -952,7 +1103,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 {(() => {
                   const total = parseFormattedNumber(custAmountStr);
                   const paid = parseFormattedNumber(custPaidAmountStr);
-                  const percent = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+                  const percent =
+                    total > 0
+                      ? Math.min(100, Math.round((paid / total) * 100))
+                      : 0;
                   const remaining = Math.max(0, total - paid);
 
                   return (
@@ -963,10 +1117,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                           <strong
                             className={`font-bold ${
                               percent === 100
-                                ? 'text-emerald-500'
+                                ? "text-emerald-500"
                                 : percent > 0
-                                ? 'text-indigo-500'
-                                : 'text-slate-400'
+                                  ? "text-indigo-500"
+                                  : "text-slate-400"
                             }`}
                           >
                             {percent}%
@@ -974,15 +1128,21 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                         </span>
                         <span className="text-[11px]">
                           {total === 0 ? (
-                            <span className="text-slate-400">Chưa nhập tổng tiền</span>
+                            <span className="text-slate-400">
+                              Chưa nhập tổng tiền
+                            </span>
                           ) : percent === 100 ? (
-                            <span className="text-emerald-500 font-bold">✓ Đã thanh toán đủ</span>
+                            <span className="text-emerald-500 font-bold">
+                              ✓ Đã thanh toán đủ
+                            </span>
                           ) : remaining > 0 ? (
                             <span className="text-amber-500 font-semibold">
                               Còn nợ: <strong>{formatVND(remaining)}</strong>
                             </span>
                           ) : (
-                            <span className="text-rose-500">Chưa thanh toán</span>
+                            <span className="text-rose-500">
+                              Chưa thanh toán
+                            </span>
                           )}
                         </span>
                       </div>
@@ -992,10 +1152,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${
                             percent === 100
-                              ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                              ? "bg-gradient-to-r from-emerald-500 to-teal-400"
                               : percent > 0
-                              ? 'bg-gradient-to-r from-indigo-500 to-emerald-400'
-                              : 'bg-slate-300 dark:bg-slate-600'
+                                ? "bg-gradient-to-r from-indigo-500 to-emerald-400"
+                                : "bg-slate-300 dark:bg-slate-600"
                           }`}
                           style={{ width: `${percent}%` }}
                         />
@@ -1012,15 +1172,22 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     Trạng thái đơn hàng
                   </label>
                   <select
-                    value={custForm.status || 'ORDERED'}
-                    onChange={(e) => setCustForm({ ...custForm, status: e.target.value as OrderStatusType })}
+                    value={custForm.status || "ORDERED"}
+                    onChange={(e) =>
+                      setCustForm({
+                        ...custForm,
+                        status: e.target.value as OrderStatusType,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold focus:ring-2 focus:ring-emerald-500/40 outline-none cursor-pointer"
                   >
-                    {Object.entries(ORDER_STATUS_CONFIG).map(([key, config]) => (
-                      <option key={key} value={key}>
-                        {config.label}
-                      </option>
-                    ))}
+                    {Object.entries(ORDER_STATUS_CONFIG).map(
+                      ([key, config]) => (
+                        <option key={key} value={key}>
+                          {config.label}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
 
@@ -1031,7 +1198,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <input
                     type="date"
                     value={custForm.orderDate}
-                    onChange={(e) => setCustForm({ ...custForm, orderDate: e.target.value })}
+                    onChange={(e) =>
+                      setCustForm({ ...custForm, orderDate: e.target.value })
+                    }
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/40 outline-none"
                   />
                 </div>
@@ -1043,8 +1212,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   Ghi chú cho khách hàng này
                 </label>
                 <textarea
-                  value={custForm.note || ''}
-                  onChange={(e) => setCustForm({ ...custForm, note: e.target.value })}
+                  value={custForm.note || ""}
+                  onChange={(e) =>
+                    setCustForm({ ...custForm, note: e.target.value })
+                  }
                   placeholder="Ghi chú thêm: Hàng đặt riêng, giao giờ hành chính..."
                   rows={2}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/40 outline-none resize-none"
@@ -1064,7 +1235,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
-                  {editingCustomerIndex !== null ? 'Cập Nhật Khách Hàng' : 'Thêm Vào Đơn'}
+                  {editingCustomerIndex !== null
+                    ? "Cập Nhật Khách Hàng"
+                    : "Thêm Vào Đơn"}
                 </button>
               </div>
             </form>

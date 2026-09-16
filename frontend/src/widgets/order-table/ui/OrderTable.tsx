@@ -30,6 +30,9 @@ interface OrderTableProps {
   onEdit: (order: Order) => void;
   onDeleted: () => void;
   onStatusChanged: (orderId: string, newStatus: OrderStatusType) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export const OrderTable: React.FC<OrderTableProps> = ({
@@ -38,9 +41,32 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   onEdit,
   onDeleted,
   onStatusChanged,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }) => {
   const showAmount = useUserStore((s) => s.showAmount);
   const renderAmount = (val: number) => (showAmount ? formatVND(val) : '••••••••');
+
+  const observerTargetRef = useRef<HTMLDivElement>(null);
+
+  // IntersectionObserver: Tự động tải trang tiếp theo khi cuộn xuống đáy
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target || !onLoadMore || !hasMore || loading || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: '150px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore, loadingMore, loading]);
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [activeCustomersModal, setActiveCustomersModal] = useState<Order | null>(null);
@@ -580,6 +606,22 @@ export const OrderTable: React.FC<OrderTableProps> = ({
             </div>
           );
         })}
+      </div>
+
+      {/* INFINITE SCROLL SENTINEL & LOADING INDICATOR */}
+      <div ref={observerTargetRef} className="py-4 flex flex-col items-center justify-center gap-2">
+        {loadingMore && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+            <div className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+            <span>Đang tải thêm 20 đơn hàng tiếp theo...</span>
+          </div>
+        )}
+
+        {!hasMore && orders.length > 0 && !loading && (
+          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 text-center py-2">
+            ✓ Đã hiển thị tất cả {orders.length} đơn hàng
+          </p>
+        )}
       </div>
 
       {/* MULTIPLE CUSTOMERS FULL DETAILS MODAL */}

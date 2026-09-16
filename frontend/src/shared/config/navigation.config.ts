@@ -12,6 +12,7 @@ import {
   ShoppingBag,
   Settings,
   ShieldCheck,
+  Users,
 } from 'lucide-react';
 
 export type UserRoleType = 'PERSONAL' | 'SALES' | 'ADMIN';
@@ -63,6 +64,16 @@ export const APP_NAVIGATION_ITEMS: MenuItemConfig[] = [
     group: 'core',
     description: 'Theo dõi đơn hàng, khách hàng, doanh số và công nợ',
     allowedRoles: ['SALES'],
+  },
+  {
+    id: 'customers',
+    name: 'Khách Hàng',
+    href: '/customers',
+    icon: Users,
+    category: 'core',
+    group: 'core',
+    description: 'Quản lý danh bạ khách hàng, công nợ và lịch sử đơn hàng',
+    allowedRoles: ['SALES', 'ADMIN'],
   },
   {
     id: 'transactions',
