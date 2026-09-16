@@ -47,23 +47,54 @@ export class AppCacheService {
   }
 
   // Invalidate toàn bộ cache theo pattern hoặc xóa các key của user
-  async invalidateUser(userId: string, namespaces: string[] = ['analytics', 'orders', 'wallets', 'categories', 'budgets', 'savings', 'bills', 'monthly-plan', 'transactions']) {
+  async invalidateUser(
+    userId: string,
+    namespaces: string[] = [
+      'analytics',
+      'orders',
+      'wallets',
+      'categories',
+      'budgets',
+      'savings',
+      'bills',
+      'monthly-plan',
+      'transactions',
+    ],
+  ) {
+    try {
+      const store: any = (this.cacheManager as any).store;
+      if (store && typeof store.keys === 'function') {
+        const keys: string[] = await store.keys();
+        const userKeys = keys.filter(
+          (k) =>
+            k.includes(`:${userId}:`) ||
+            k.endsWith(`:${userId}`) ||
+            namespaces.some(
+              (ns) =>
+                k.startsWith(`${ns}:${userId}`) ||
+                k.startsWith(`${ns}:list:${userId}`),
+            ),
+        );
+        await Promise.allSettled(userKeys.map((k) => this.del(k)));
+        return;
+      }
+    } catch (err) {
+      console.warn('Cache keys pattern invalidation error:', err);
+    }
+
     const promises: Promise<void>[] = [];
     for (const ns of namespaces) {
       // Xóa các key phổ biến
       promises.push(this.del(`${ns}:${userId}`));
-      promises.push(this.del(`${ns}:${userId}:all`));
-      promises.push(this.del(`${ns}:${userId}:today`));
-      promises.push(this.del(`${ns}:${userId}:week`));
-      promises.push(this.del(`${ns}:${userId}:month`));
-      promises.push(this.del(`${ns}:${userId}:year`));
-      // Xóa các key dạng list
-      promises.push(this.del(`${ns}:list:${userId}`));
-      promises.push(this.del(`${ns}:list:${userId}:all`));
-      promises.push(this.del(`${ns}:list:${userId}:today`));
-      promises.push(this.del(`${ns}:list:${userId}:week`));
-      promises.push(this.del(`${ns}:list:${userId}:month`));
-      promises.push(this.del(`${ns}:list:${userId}:year`));
+      for (const p of ['all', 'today', 'week', 'month', 'year']) {
+        promises.push(this.del(`${ns}:${userId}:${p}`));
+        promises.push(this.del(`${ns}:list:${userId}:${p}`));
+        for (let page = 1; page <= 20; page++) {
+          for (const limit of [0, 10, 20, 50, 100]) {
+            promises.push(this.del(`${ns}:list:${userId}:${p}:${page}:${limit}`));
+          }
+        }
+      }
     }
     await Promise.allSettled(promises);
   }

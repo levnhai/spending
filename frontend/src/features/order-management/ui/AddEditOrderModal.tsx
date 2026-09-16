@@ -855,14 +855,15 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       {/* SUB-MODAL: THÊM / SỬA KHÁCH HÀNG */}
       {isCustomerModalOpen && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150"
           onClick={() => setIsCustomerModalOpen(false)}
         >
           <div
-            className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 space-y-4"
+            className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-4 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-emerald-500" />
                 <h4 className="font-bold text-base text-slate-900 dark:text-white">
@@ -880,7 +881,12 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveCustomer} className="space-y-4 text-xs">
+            {/* Scrollable Form Body */}
+            <form
+              id="customer-submodal-form"
+              onSubmit={handleSaveCustomer}
+              className="flex-1 overflow-y-auto p-5 space-y-4 text-xs"
+            >
               {custError && (
                 <div className="p-3 rounded-xl bg-rose-500/10 text-rose-500 font-semibold">
                   {custError}
@@ -1221,26 +1227,27 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/40 outline-none resize-none"
                 />
               </div>
-
-              {/* Sub-modal actions */}
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsCustomerModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 shadow-md shadow-emerald-500/20 cursor-pointer"
-                >
-                  {editingCustomerIndex !== null
-                    ? "Cập Nhật Khách Hàng"
-                    : "Thêm Vào Đơn"}
-                </button>
-              </div>
             </form>
+
+            {/* Sub-modal Fixed Bottom Footer */}
+            <div className="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCustomerModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                form="customer-submodal-form"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:opacity-95 shadow-md shadow-emerald-500/20 cursor-pointer active:scale-95 transition-all"
+              >
+                {editingCustomerIndex !== null
+                  ? "Cập Nhật Khách Hàng"
+                  : "Thêm Vào Đơn"}
+              </button>
+            </div>
           </div>
         </div>
       )}

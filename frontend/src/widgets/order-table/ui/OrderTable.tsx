@@ -28,7 +28,7 @@ interface OrderTableProps {
   orders: Order[];
   loading: boolean;
   onEdit: (order: Order) => void;
-  onDeleted: () => void;
+  onDeleted: (deletedIds?: string | string[]) => void;
   onStatusChanged: (orderId: string, newStatus: OrderStatusType) => void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -113,12 +113,13 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   // Xác nhận xóa hàng loạt
   const handleConfirmBatchDelete = async () => {
     if (selectedIds.length === 0) return;
+    const idsToDelete = [...selectedIds];
     setIsBatchDeleting(true);
     try {
-      await Promise.all(selectedIds.map((id) => orderApi.delete(id)));
+      await Promise.all(idsToDelete.map((id) => orderApi.delete(id)));
       setSelectedIds([]);
       setIsBatchDeleteModalOpen(false);
-      onDeleted();
+      onDeleted(idsToDelete);
     } catch (e) {
       alert('Đã xảy ra lỗi khi xóa đơn hàng');
     } finally {
@@ -128,11 +129,12 @@ export const OrderTable: React.FC<OrderTableProps> = ({
 
   const handleConfirmDelete = async () => {
     if (!orderToDelete) return;
+    const idToDelete = orderToDelete.id;
     setIsDeleting(true);
     try {
-      await orderApi.delete(orderToDelete.id);
+      await orderApi.delete(idToDelete);
       setOrderToDelete(null);
-      onDeleted();
+      onDeleted(idToDelete);
     } catch (e) {
       alert('Không thể xóa đơn hàng');
     } finally {

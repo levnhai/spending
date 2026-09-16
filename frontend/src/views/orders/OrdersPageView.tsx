@@ -165,6 +165,16 @@ export const OrdersPageView: React.FC = () => {
     }
   };
 
+  const handleDeleted = (deletedIds?: string | string[]) => {
+    if (typeof deletedIds === 'string') {
+      setOrders((prev) => prev.filter((o) => o._id !== deletedIds));
+    } else if (Array.isArray(deletedIds)) {
+      setOrders((prev) => prev.filter((o) => !deletedIds.includes(o._id)));
+    }
+    fetchFirstPage();
+    fetchStats();
+  };
+
   const handleSuccessSave = () => {
     fetchFirstPage();
     fetchStats();
@@ -282,7 +292,7 @@ export const OrdersPageView: React.FC = () => {
           hasMore={hasMore}
           onLoadMore={handleLoadMore}
           onEdit={handleEdit}
-          onDeleted={handleSuccessSave}
+          onDeleted={handleDeleted}
           onStatusChanged={handleStatusChanged}
         />
       </main>
