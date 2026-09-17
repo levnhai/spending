@@ -18,20 +18,21 @@ export class UploadController {
 
   @Post('order-image')
   @UseInterceptors(FileInterceptor('file'))
-  uploadOrderImage(
+  async uploadOrderImage(
     @UploadedFile() file?: any,
     @Body('base64') base64?: string,
   ) {
     if (file) {
-      const url = this.uploadService.saveFile(file);
+      const url = await this.uploadService.saveFile(file);
       return { url, message: 'Upload ảnh thành công' };
     }
 
     if (base64) {
-      const url = this.uploadService.saveBase64(base64);
+      const url = await this.uploadService.saveBase64(base64);
       return { url, message: 'Upload ảnh thành công' };
     }
 
     throw new BadRequestException('Vui lòng cung cấp file ảnh hoặc chuỗi base64');
   }
 }
+

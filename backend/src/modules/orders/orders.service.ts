@@ -239,13 +239,21 @@ export class OrdersService implements OnApplicationBootstrap {
   ) {}
 
   /**
-   * Tự động quét và giải phóng các ảnh Base64 cũ lưu trong DB sang file tĩnh WebP
+   * Tự động quét và đồng bộ các ảnh Base64 hoặc ảnh local cũ trong DB sang Cloudinary
    */
   async onApplicationBootstrap() {
     try {
+      const isCloudReady = this.uploadService.isCloudinaryReady();
+
+      // 1. Quét và đồng bộ các ảnh Base64 (cả root và customers)
       const ordersWithBase64 = await this.orderModel
-        .find({ imageUrl: { $regex: /^data:image\// } })
-        .limit(100)
+        .find({
+          $or: [
+            { imageUrl: { $regex: /^data:image\// } },
+            { 'customers.imageUrl': { $regex: /^data:image\// } },
+          ],
+        })
+        .limit(200)
         .exec();
 
       if (ordersWithBase64.length > 0) {
@@ -253,9 +261,21 @@ export class OrdersService implements OnApplicationBootstrap {
         let convertedCount = 0;
         for (const order of ordersWithBase64) {
           try {
+            let isModified = false;
             if (order.imageUrl && order.imageUrl.startsWith('data:image/')) {
-              const staticUrl = this.uploadService.saveBase64(order.imageUrl);
-              order.imageUrl = staticUrl;
+              const newUrl = await this.uploadService.saveBase64(order.imageUrl);
+              order.imageUrl = newUrl;
+              isModified = true;
+            }
+            if (order.customers && order.customers.length > 0) {
+              for (const cust of order.customers) {
+                if (cust.imageUrl && cust.imageUrl.startsWith('data:image/')) {
+                  cust.imageUrl = await this.uploadService.saveBase64(cust.imageUrl);
+                  isModified = true;
+                }
+              }
+            }
+            if (isModified) {
               await order.save();
               convertedCount++;
             }
@@ -263,27 +283,84 @@ export class OrdersService implements OnApplicationBootstrap {
             this.logger.warn(`Không thể chuyển đổi ảnh cho đơn ${order.orderCode}: ${e.message}`);
           }
         }
-        this.logger.log(`✅ Đã chuyển đổi thành công ${convertedCount} ảnh đơn hàng sang file tĩnh! Database đã được giải phóng.`);
+        this.logger.log(`✅ Đã chuyển đổi thành công ${convertedCount} ảnh đơn hàng Base64!`);
+      }
+
+      // 2. Nếu Cloudinary đã sẵn sàng, tự động migrate các file /uploads/orders/ cũ lên Cloudinary
+      if (isCloudReady) {
+        const ordersWithLocalFiles = await this.orderModel
+          .find({
+            $or: [
+              { imageUrl: { $regex: /^\/uploads\/orders\// } },
+              { 'customers.imageUrl': { $regex: /^\/uploads\/orders\// } },
+            ],
+          })
+          .limit(200)
+          .exec();
+
+        if (ordersWithLocalFiles.length > 0) {
+          this.logger.log(`☁️ Bắt đầu tải ${ordersWithLocalFiles.length} đơn hàng có ảnh local lên Cloudinary...`);
+          let cloudMigratedCount = 0;
+          for (const order of ordersWithLocalFiles) {
+            try {
+              let isModified = false;
+              if (order.imageUrl && order.imageUrl.startsWith('/uploads/orders/')) {
+                const cloudUrl = await this.uploadService.uploadLocalFileToCloudinary(order.imageUrl);
+                if (cloudUrl) {
+                  order.imageUrl = cloudUrl;
+                  isModified = true;
+                }
+              }
+              if (order.customers && order.customers.length > 0) {
+                for (const cust of order.customers) {
+                  if (cust.imageUrl && cust.imageUrl.startsWith('/uploads/orders/')) {
+                    const cloudUrl = await this.uploadService.uploadLocalFileToCloudinary(cust.imageUrl);
+                    if (cloudUrl) {
+                      cust.imageUrl = cloudUrl;
+                      isModified = true;
+                    }
+                  }
+                }
+              }
+              if (isModified) {
+                await order.save();
+                cloudMigratedCount++;
+              }
+            } catch (e) {
+              this.logger.warn(`Không thể tải ảnh đơn ${order.orderCode} lên Cloudinary: ${e.message}`);
+            }
+          }
+          this.logger.log(`✅ Đã tải thành công ${cloudMigratedCount} đơn hàng có ảnh local lên Cloudinary!`);
+        }
       }
     } catch (err) {
-      this.logger.warn(`Lỗi khi quét ảnh base64 cũ: ${err.message}`);
+      this.logger.warn(`Lỗi khi quét đồng bộ ảnh: ${err.message}`);
     }
   }
 
+
   /**
-   * Chuẩn hóa URL ảnh: nếu là base64 thì lưu thành file tĩnh ngay
+   * Chuẩn hóa URL ảnh: upload lên Cloudinary nếu là base64 hoặc file local
    */
-  private normalizeImageUrl(url?: string): string {
+  private async normalizeImageUrl(url?: string): Promise<string> {
     if (!url) return '';
     if (url.startsWith('data:image/')) {
       try {
-        return this.uploadService.saveBase64(url);
+        return await this.uploadService.saveBase64(url);
       } catch (err) {
         this.logger.warn(`Không thể lưu ảnh base64: ${err.message}`);
+      }
+    } else if (url.startsWith('/uploads/orders/') && this.uploadService.isCloudinaryReady()) {
+      try {
+        const cloudUrl = await this.uploadService.uploadLocalFileToCloudinary(url);
+        if (cloudUrl) return cloudUrl;
+      } catch (err) {
+        this.logger.warn(`Không thể chuyển đổi ảnh local sang Cloudinary: ${err.message}`);
       }
     }
     return url;
   }
+
 
   async findAll(
     userId: string,
@@ -477,33 +554,35 @@ export class OrdersService implements OnApplicationBootstrap {
         ? dto.orderCode.trim()
         : `DH-${String(count + 1).padStart(4, '0')}`;
 
-    const customers = (dto.customers || []).map((c) => {
-      const amount = c.amount || 0;
-      const paidAmount = c.paidAmount || 0;
-      let paymentStatus = c.paymentStatus || PaymentStatus.UNPAID;
-      if (paidAmount >= amount && amount > 0) {
-        paymentStatus = PaymentStatus.PAID;
-      } else if (paidAmount > 0 && paidAmount < amount) {
-        paymentStatus = PaymentStatus.PARTIAL;
-      }
+    const customers = await Promise.all(
+      (dto.customers || []).map(async (c) => {
+        const amount = c.amount || 0;
+        const paidAmount = c.paidAmount || 0;
+        let paymentStatus = c.paymentStatus || PaymentStatus.UNPAID;
+        if (paidAmount >= amount && amount > 0) {
+          paymentStatus = PaymentStatus.PAID;
+        } else if (paidAmount > 0 && paidAmount < amount) {
+          paymentStatus = PaymentStatus.PARTIAL;
+        }
 
-      return {
-        name: c.name,
-        phone: c.phone || '',
-        facebookUrl: c.facebookUrl || '',
-        address: c.address || '',
-        quantity: c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
-        amount,
-        paidAmount,
-        orderDate: c.orderDate ? new Date(c.orderDate) : new Date(),
-        status: c.status || OrderStatus.ORDERED,
-        paymentStatus,
-        note: c.note || '',
-        size: c.size || '',
-        color: c.color || '',
-        imageUrl: c.imageUrl ? this.normalizeImageUrl(c.imageUrl) : '',
-      };
-    });
+        return {
+          name: c.name,
+          phone: c.phone || '',
+          facebookUrl: c.facebookUrl || '',
+          address: c.address || '',
+          quantity: c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
+          amount,
+          paidAmount,
+          orderDate: c.orderDate ? new Date(c.orderDate) : new Date(),
+          status: c.status || OrderStatus.ORDERED,
+          paymentStatus,
+          note: c.note || '',
+          size: c.size || '',
+          color: c.color || '',
+          imageUrl: c.imageUrl ? await this.normalizeImageUrl(c.imageUrl) : '',
+        };
+      }),
+    );
 
     const calculatedTotal = customers.reduce((sum, c) => sum + (c.amount || 0), 0);
     const calculatedPaid = customers.reduce((sum, c) => sum + (c.paidAmount || 0), 0);
@@ -519,7 +598,7 @@ export class OrdersService implements OnApplicationBootstrap {
     }
 
     const primaryCust = customers[0];
-    const imageUrl = dto.imageUrl ? this.normalizeImageUrl(dto.imageUrl) : dto.imageUrl;
+    const imageUrl = dto.imageUrl ? await this.normalizeImageUrl(dto.imageUrl) : dto.imageUrl;
 
     const newOrder = new this.orderModel({
       ...dto,
@@ -553,8 +632,9 @@ export class OrdersService implements OnApplicationBootstrap {
   async update(id: string, userId: string, dto: UpdateOrderDto) {
     const updateData: any = { ...dto };
     if (dto.imageUrl !== undefined) {
-      updateData.imageUrl = this.normalizeImageUrl(dto.imageUrl);
+      updateData.imageUrl = await this.normalizeImageUrl(dto.imageUrl);
     }
+
 
     if (dto.size !== undefined) updateData.size = dto.size;
     if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
