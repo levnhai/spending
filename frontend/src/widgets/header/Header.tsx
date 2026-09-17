@@ -37,9 +37,14 @@ export const Header: React.FC<HeaderProps> = ({
   const router = useRouter();
   const { user, theme, toggleTheme, logout, showAmount, toggleShowAmount, role } = useUserStore();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const userRole = role || user?.role || 'PERSONAL';
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const userRole = mounted ? (role || user?.role || 'PERSONAL') : 'PERSONAL';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

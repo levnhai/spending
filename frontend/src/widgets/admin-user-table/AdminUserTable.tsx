@@ -13,8 +13,11 @@ import {
   MoreVertical,
   Check,
   AlertTriangle,
+  Pencil,
+  Eye,
 } from 'lucide-react';
 import { AdminUser, AdminRoleType, adminApi } from '@/entities/admin';
+import { EditUserModal, UserDetailModal } from '@/features/admin-user-management';
 
 interface AdminUserTableProps {
   users: AdminUser[];
@@ -30,6 +33,8 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
   currentUserId,
 }) => {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [userToViewDetail, setUserToViewDetail] = useState<AdminUser | null>(null);
+  const [userToEdit, setUserToEdit] = useState<AdminUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -144,16 +149,17 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 <th className="py-4 px-6">Người dùng</th>
-                <th className="py-4 px-6">Vai trò (Role)</th>
+                <th className="py-4 px-6">Vai trò</th>
+                <th className="py-4 px-6">Gói & Thời hạn</th>
                 <th className="py-4 px-6">Trạng thái</th>
-                <th className="py-4 px-6">Ngày tham gia</th>
+                <th className="py-4 px-6">Ngày tạo</th>
                 <th className="py-4 px-6 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-xs text-slate-300">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     <User className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="text-sm font-medium">Không tìm thấy người dùng phù hợp</p>
                   </td>
@@ -165,6 +171,10 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                   const isCurrent = u.id === currentUserId;
                   const isBusy = updatingId === u.id;
 
+                  const isForever = u.role === 'ADMIN' || !u.subscriptionExpiresAt;
+                  const isExp = u.isExpired || (u.daysRemaining !== null && u.daysRemaining !== undefined && u.daysRemaining < 0);
+                  const isNearExp = !isExp && u.daysRemaining !== null && u.daysRemaining !== undefined && u.daysRemaining <= 7;
+
                   return (
                     <tr
                       key={u.id}
@@ -172,8 +182,11 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                     >
                       {/* Người dùng */}
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-slate-700 to-slate-800 border border-slate-700 flex items-center justify-center font-bold text-sm text-emerald-400 shrink-0 shadow-sm">
+                        <div 
+                          onClick={() => setUserToViewDetail(u)}
+                          className="flex items-center gap-3 cursor-pointer group"
+                        >
+                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-slate-700 to-slate-800 border border-slate-700 group-hover:border-purple-500 flex items-center justify-center font-bold text-sm text-emerald-400 shrink-0 shadow-sm transition-colors">
                             {u.avatarUrl ? (
                               <img
                                 src={u.avatarUrl}
@@ -186,7 +199,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-white truncate">
+                              <span className="font-bold text-white group-hover:text-purple-300 transition-colors truncate">
                                 {u.fullName}
                               </span>
                               {isCurrent && (
@@ -226,6 +239,42 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                         </div>
                       </td>
 
+                      {/* Gói & Thời Hạn */}
+                      <td className="py-4 px-6">
+                        {isForever ? (
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[11px] font-bold">
+                            <span>Vĩnh viễn</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  isExp
+                                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                                    : isNearExp
+                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                }`}
+                              >
+                                {isExp
+                                  ? 'Đã hết hạn'
+                                  : isNearExp
+                                  ? `Còn ${u.daysRemaining} ngày`
+                                  : `Còn ${u.daysRemaining} ngày`}
+                              </span>
+                              <span className="text-[11px] text-slate-400">
+                                {formatDate(u.subscriptionExpiresAt || '')}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-medium">
+                              {(u.monthlyPrice || 0).toLocaleString('vi-VN')} ₫/tháng
+                              {u.subscriptionMonths ? ` • Gói ${u.subscriptionMonths} tháng` : ''}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+
                       {/* Trạng thái (Active / Blocked Toggle) */}
                       <td className="py-4 px-6">
                         <button
@@ -248,7 +297,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                         </button>
                       </td>
 
-                      {/* Ngày tham gia */}
+                      {/* Ngày tạo */}
                       <td className="py-4 px-6 text-slate-400 text-xs">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 opacity-60" />
@@ -258,17 +307,38 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
 
                       {/* Thao tác */}
                       <td className="py-4 px-6 text-right">
-                        <button
-                          type="button"
-                          disabled={isBusy || isCurrent}
-                          onClick={() => setUserToDelete(u)}
-                          title={isCurrent ? 'Không thể tự xóa chính mình' : 'Xóa tài khoản'}
-                          className={`p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors ${
-                            isCurrent ? 'opacity-30 cursor-not-allowed' : ''
-                          }`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setUserToViewDetail(u)}
+                            title="Xem chi tiết thông tin, khách hàng, doanh thu"
+                            className="p-2 rounded-xl text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => setUserToEdit(u)}
+                            title="Gia hạn & Chỉnh sửa thông tin"
+                            className="p-2 rounded-xl text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isBusy || isCurrent}
+                            onClick={() => setUserToDelete(u)}
+                            title={isCurrent ? 'Không thể tự xóa chính mình' : 'Xóa tài khoản'}
+                            className={`p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors ${
+                              isCurrent ? 'opacity-30 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -278,6 +348,29 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Modal Chi Tiết Người Dùng (3 Tabs: Thông tin, Khách hàng, Doanh thu) */}
+      <UserDetailModal
+        isOpen={!!userToViewDetail}
+        user={userToViewDetail}
+        onClose={() => setUserToViewDetail(null)}
+        onEditUser={(u) => {
+          setUserToViewDetail(null);
+          setUserToEdit(u);
+        }}
+      />
+
+      {/* Modal Chỉnh Sửa Người Dùng */}
+      <EditUserModal
+        isOpen={!!userToEdit}
+        user={userToEdit}
+        currentUserId={currentUserId}
+        onClose={() => setUserToEdit(null)}
+        onSuccess={() => {
+          setUserToEdit(null);
+          onRefresh();
+        }}
+      />
 
       {/* Modal Xác nhận Xóa */}
       {userToDelete && (

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Wallet,
   Settings as SettingsIcon,
@@ -20,6 +20,8 @@ import { useUserStore } from '@/entities/user/useUserStore';
 export const Sidebar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get('tab');
   const { user, hiddenMenus, role } = useUserStore();
 
   const [isCollapsed, setIsCollapsed] = useState(false);

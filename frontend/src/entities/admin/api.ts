@@ -1,5 +1,14 @@
 import { api } from '@/shared/lib/api';
-import { AdminStats, AdminUser, AdminUserFilter, CreateAdminUserData, AdminRoleType } from './types';
+import {
+  AdminStats,
+  AdminUser,
+  AdminUserFilter,
+  CreateAdminUserData,
+  UpdateAdminUserData,
+  RenewSubscriptionData,
+  AdminRoleType,
+  AdminUserDetail,
+} from './types';
 
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
@@ -11,6 +20,27 @@ export const adminApi = {
     const res = await api.get('/admin/users', {
       params: filter,
     });
+    return res.data;
+  },
+
+  getUserDetail: async (userId: string): Promise<AdminUserDetail> => {
+    const res = await api.get(`/admin/users/${userId}`);
+    return res.data;
+  },
+
+  updateUser: async (
+    userId: string,
+    data: UpdateAdminUserData,
+  ): Promise<AdminUser & { message: string }> => {
+    const res = await api.patch(`/admin/users/${userId}`, data);
+    return res.data;
+  },
+
+  renewSubscription: async (
+    userId: string,
+    data: RenewSubscriptionData,
+  ): Promise<AdminUser & { message: string }> => {
+    const res = await api.post(`/admin/users/${userId}/renew`, data);
     return res.data;
   },
 

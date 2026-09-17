@@ -42,8 +42,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     if (!mounted || !token || !user || isTokenExpired(token)) return;
 
     const currentItem = APP_NAVIGATION_ITEMS.find((item) => {
-      if (item.href === '/dashboard') return pathname === '/dashboard';
-      return pathname.startsWith(item.href);
+      const itemBase = item.href.split('?')[0];
+      if (itemBase === '/dashboard') return pathname === '/dashboard';
+      return pathname.startsWith(itemBase);
     });
 
     if (currentItem && currentItem.allowedRoles) {

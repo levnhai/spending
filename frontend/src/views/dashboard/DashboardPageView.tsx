@@ -181,133 +181,133 @@ export const DashboardPageView: React.FC = () => {
               </div>
             </div>
 
-            {/* Sales KPI Cards Grid (6 Thẻ chỉ số chuẩn) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* Sales KPI Cards Grid (Mobile: 2 cột, Tablet: 3 cột, Desktop: 6 cột) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4">
               {/* Card 1: Tổng Doanh Thu */}
-              <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-2 flex flex-col justify-between">
+              <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-1.5 sm:space-y-2 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                       Tổng Doanh Thu
                     </span>
-                    <div className="p-1.5 rounded-xl bg-blue-500/10 text-blue-500">
-                      <Wallet className="w-4 h-4" />
+                    <div className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+                      <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                  <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white mt-0.5 sm:mt-1 truncate">
                     {renderAmount(orderStats?.totalRevenue || 0)}
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>Doanh thu thuần:</span>
-                  <strong className="text-blue-600 dark:text-blue-400 font-bold">{renderAmount(orderStats?.netRevenue || 0)}</strong>
+                <div className="pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between gap-1">
+                  <span className="truncate">Thuần:</span>
+                  <strong className="text-blue-600 dark:text-blue-400 font-bold truncate">{renderAmount(orderStats?.netRevenue || 0)}</strong>
                 </div>
               </div>
 
               {/* Card 2: Phí Vận Chuyển (Ship) */}
-              <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-2 flex flex-col justify-between">
+              <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-1.5 sm:space-y-2 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                       Phí Vận Chuyển
                     </span>
-                    <div className="p-1.5 rounded-xl bg-cyan-500/10 text-cyan-500">
-                      <Truck className="w-4 h-4" />
+                    <div className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-cyan-500/10 text-cyan-500 shrink-0">
+                      <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="text-xl font-black text-cyan-600 dark:text-cyan-400 mt-1">
+                  <div className="text-base sm:text-xl font-black text-cyan-600 dark:text-cyan-400 mt-0.5 sm:mt-1 truncate">
                     {renderAmount(orderStats?.totalShippingFee || 0)}
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400">
-                  Tổng tiền cước ship hàng
+                <div className="pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[9px] sm:text-[10px] text-slate-400 truncate">
+                  Tổng cước ship hàng
                 </div>
               </div>
 
               {/* Card 3: Tiền Vốn (Giá Vốn Hàng Bán) */}
-              <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-2 flex flex-col justify-between">
+              <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-1.5 sm:space-y-2 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                       Tiền Vốn
                     </span>
-                    <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-500">
-                      <DollarSign className="w-4 h-4" />
+                    <div className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
+                      <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="text-xl font-black text-amber-500 mt-1">
+                  <div className="text-base sm:text-xl font-black text-amber-500 mt-0.5 sm:mt-1 truncate">
                     {renderAmount(orderStats?.totalCostPrice || 0)}
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400">
-                  Tổng giá vốn hàng đã bán
+                <div className="pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[9px] sm:text-[10px] text-slate-400 truncate">
+                  Tổng giá vốn đã bán
                 </div>
               </div>
 
               {/* Card 4: Lợi Nhuận Ròng & Tỷ Suất */}
-              <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-2 flex flex-col justify-between">
+              <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-1.5 sm:space-y-2 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                       Lợi Nhuận
                     </span>
-                    <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-500">
-                      <TrendingUp className="w-4 h-4" />
+                    <div className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
+                      <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className={`text-xl font-black mt-1 ${isPositiveProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <div className={`text-base sm:text-xl font-black mt-0.5 sm:mt-1 truncate ${isPositiveProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {renderAmount(orderStats?.profit || 0)}
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>Tỷ suất lợi nhuận:</span>
-                  <strong className={`font-bold ${isPositiveProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                <div className="pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between gap-1">
+                  <span className="truncate">Tỷ suất:</span>
+                  <strong className={`font-bold truncate ${isPositiveProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {orderStats?.profitMargin || 0}%
                   </strong>
                 </div>
               </div>
 
               {/* Card 5: Tổng Đơn Hàng & Hoàn Thành */}
-              <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-2 flex flex-col justify-between">
+              <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-1.5 sm:space-y-2 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                       Đơn Hàng
                     </span>
-                    <div className="p-1.5 rounded-xl bg-purple-500/10 text-purple-500">
-                      <Package className="w-4 h-4" />
+                    <div className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-purple-500/10 text-purple-500 shrink-0">
+                      <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {orderStats?.totalOrders || 0} <span className="text-xs font-semibold text-slate-400">đơn</span>
+                  <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white mt-0.5 sm:mt-1 truncate">
+                    {orderStats?.totalOrders || 0} <span className="text-[10px] sm:text-xs font-semibold text-slate-400">đơn</span>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>Hoàn thành:</span>
-                  <strong className="text-purple-600 dark:text-purple-400 font-bold">
+                <div className="pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between gap-1">
+                  <span className="truncate">Hoàn thành:</span>
+                  <strong className="text-purple-600 dark:text-purple-400 font-bold truncate">
                     {orderStats?.completedOrders || 0} ({orderStats?.completionRate || 0}%)
                   </strong>
                 </div>
               </div>
 
               {/* Card 6: Công Nợ Còn Lại & Thực Thu */}
-              <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-2 flex flex-col justify-between">
+              <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-1.5 sm:space-y-2 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Chưa Thu (Công Nợ)
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
+                      Chưa Thu
                     </span>
-                    <div className="p-1.5 rounded-xl bg-rose-500/10 text-rose-500">
-                      <AlertCircle className="w-4 h-4" />
+                    <div className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-rose-500/10 text-rose-500 shrink-0">
+                      <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="text-xl font-black text-rose-500 mt-1">
+                  <div className="text-base sm:text-xl font-black text-rose-500 mt-0.5 sm:mt-1 truncate">
                     {renderAmount(orderStats?.totalRemaining || 0)}
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>Đã thu:</span>
-                  <strong className="text-emerald-500 font-bold">{renderAmount(orderStats?.totalPaid || 0)}</strong>
+                <div className="pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between gap-1">
+                  <span className="truncate">Đã thu:</span>
+                  <strong className="text-emerald-500 font-bold truncate">{renderAmount(orderStats?.totalPaid || 0)}</strong>
                 </div>
               </div>
             </div>

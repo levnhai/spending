@@ -12,9 +12,15 @@ export interface OrderCustomer {
   name: string;
   phone?: string;
   facebookUrl?: string; // Link Facebook của khách hàng
+  address?: string; // Địa chỉ nhận hàng của khách
+  size?: string; // Kích cỡ / Size / Phân loại khách đặt (vd: S, M, L, XL, 39, 40...)
+  color?: string; // Màu sắc sản phẩm (vd: Đen, Trắng, Be, Xanh, Hồng...)
+  imageUrl?: string; // Hình ảnh riêng của món hàng / sản phẩm
   quantity?: number; // Số lượng đặt
-  amount?: number; // Tổng tiền khách này cần trả
+  amount?: number; // Tổng tiền khách này cần trả (tiền hàng + tiền ship)
   paidAmount?: number; // Tiền khách này đã thanh toán
+  shippingFee?: number; // Phí vận chuyển / ship riêng cho khách này
+  costPrice?: number; // Tiền vốn tương ứng với phần khách này
   orderDate?: string; // Ngày lên đơn
   status?: OrderStatusType; // Trạng thái: Đã đặt → Kho Trung → Kho Việt → Nhà → Thành công → Đã hủy
   paymentStatus?: PaymentStatusType; // Thanh toán
@@ -26,6 +32,8 @@ export interface Order {
   userId: string;
   orderCode: string;
   title: string;
+  size?: string; // Kích cỡ / Size chung của sản phẩm
+  color?: string; // Màu sắc chung của sản phẩm
   imageUrl?: string;
   customers: OrderCustomer[];
   totalAmount: number; // Tổng tiền cả đơn (= ∑ amount)
@@ -37,6 +45,10 @@ export interface Order {
   paymentStatus: PaymentStatusType;
   customerName?: string;
   customerPhone?: string;
+  customerAddress?: string;
+  address?: string;
+  customerFacebookUrl?: string;
+  facebookUrl?: string;
   note?: string;
   createdAt: string;
   updatedAt: string;
@@ -73,6 +85,8 @@ export interface OrderStats {
 export interface CreateOrderPayload {
   orderCode?: string;
   title: string;
+  size?: string;
+  color?: string;
   imageUrl?: string;
   customers?: OrderCustomer[];
   totalAmount?: number;
@@ -82,6 +96,12 @@ export interface CreateOrderPayload {
   orderDate?: string;
   status?: OrderStatusType;
   paymentStatus?: PaymentStatusType;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  address?: string;
+  customerFacebookUrl?: string;
+  facebookUrl?: string;
   note?: string;
 }
 

@@ -491,6 +491,7 @@ export class OrdersService implements OnApplicationBootstrap {
         name: c.name,
         phone: c.phone || '',
         facebookUrl: c.facebookUrl || '',
+        address: c.address || '',
         quantity: c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
         amount,
         paidAmount,
@@ -498,6 +499,9 @@ export class OrdersService implements OnApplicationBootstrap {
         status: c.status || OrderStatus.ORDERED,
         paymentStatus,
         note: c.note || '',
+        size: c.size || '',
+        color: c.color || '',
+        imageUrl: c.imageUrl ? this.normalizeImageUrl(c.imageUrl) : '',
       };
     });
 
@@ -522,14 +526,20 @@ export class OrdersService implements OnApplicationBootstrap {
       imageUrl,
       userId: new Types.ObjectId(userId),
       orderCode,
+      size: dto.size || primaryCust?.size || '',
+      color: dto.color || primaryCust?.color || '',
       customers,
       totalAmount,
       paidAmount,
       costPrice: dto.costPrice || 0,
       shippingFee: dto.shippingFee || 0,
       paymentStatus: orderPaymentStatus,
-      customerName: primaryCust?.name || '',
-      customerPhone: primaryCust?.phone || '',
+      customerName: primaryCust?.name || dto.customerName || '',
+      customerPhone: primaryCust?.phone || dto.customerPhone || '',
+      customerAddress: primaryCust?.address || dto.customerAddress || dto.address || '',
+      address: primaryCust?.address || dto.customerAddress || dto.address || '',
+      customerFacebookUrl: primaryCust?.facebookUrl || dto.customerFacebookUrl || dto.facebookUrl || '',
+      facebookUrl: primaryCust?.facebookUrl || dto.customerFacebookUrl || dto.facebookUrl || '',
       orderDate: primaryCust?.orderDate || (dto.orderDate ? new Date(dto.orderDate) : new Date()),
       status: primaryCust?.status || dto.status || OrderStatus.ORDERED,
       note: primaryCust?.note || dto.note || '',
@@ -546,6 +556,7 @@ export class OrdersService implements OnApplicationBootstrap {
       updateData.imageUrl = this.normalizeImageUrl(dto.imageUrl);
     }
 
+    if (dto.size !== undefined) updateData.size = dto.size;
     if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
     if (dto.shippingFee !== undefined) updateData.shippingFee = dto.shippingFee;
 
@@ -571,6 +582,7 @@ export class OrdersService implements OnApplicationBootstrap {
           status: c.status || OrderStatus.ORDERED,
           paymentStatus,
           note: c.note || '',
+          size: c.size || '',
         };
       });
 

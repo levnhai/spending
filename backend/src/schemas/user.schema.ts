@@ -37,6 +37,22 @@ export class User {
 
   @Prop({ type: [String], default: [] })
   hiddenMenus: string[];
+
+  // Quản lý gói thuê bao & thời hạn sử dụng
+  @Prop({ type: Number, default: null })
+  subscriptionMonths?: number | null; // Số tháng đăng ký (1, 2, 3, 6, 12... hoặc null = Vĩnh viễn)
+
+  @Prop({ default: 0 })
+  monthlyPrice?: number; // Số tiền hàng tháng do Admin tự nhập
+
+  @Prop({ default: 0 })
+  totalAmountPaid?: number; // Tổng số tiền khách đã thanh toán
+
+  @Prop({ type: Date, default: null })
+  subscriptionStartDate?: Date | null; // Ngày bắt đầu tính gói
+
+  @Prop({ type: Date, default: null })
+  subscriptionExpiresAt?: Date | null; // Ngày hết hạn thuê bao
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

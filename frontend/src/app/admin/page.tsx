@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import { AdminPageView } from '@/views/admin';
 
 export const metadata = {
-  title: 'Quản Trị Hệ Thống | Spending PRO',
-  description: 'Bảng quản trị hệ thống và người dùng',
+  title: 'Quản Lý Người Dùng | Spending PRO',
+  description: 'Quản lý danh sách người dùng, phân quyền và trạng thái hoạt động',
 };
 
 export default function AdminPage() {

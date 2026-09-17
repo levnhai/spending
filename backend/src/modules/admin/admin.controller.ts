@@ -18,6 +18,8 @@ import {
   GetUsersFilterDto,
   UpdateUserRoleDto,
   UpdateUserStatusDto,
+  UpdateAdminUserDto,
+  RenewSubscriptionDto,
 } from './dto/admin.dto';
 
 @Controller('admin')
@@ -35,9 +37,31 @@ export class AdminController {
     return this.adminService.getUsers(filter);
   }
 
+  @Get('users/:id')
+  async getUserDetail(@Param('id') id: string) {
+    return this.adminService.getUserDetail(id);
+  }
+
   @Post('users')
   async createUser(@Body() dto: CreateAdminUserDto) {
     return this.adminService.createUser(dto);
+  }
+
+  @Post('users/:id/renew')
+  async renewSubscription(
+    @Param('id') id: string,
+    @Body() dto: RenewSubscriptionDto,
+  ) {
+    return this.adminService.renewSubscription(id, dto);
+  }
+
+  @Patch('users/:id')
+  async updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateAdminUserDto,
+    @Request() req: any,
+  ) {
+    return this.adminService.updateUser(id, dto, req.user.userId);
   }
 
   @Patch('users/:id/role')

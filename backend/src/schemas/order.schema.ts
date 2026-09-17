@@ -49,6 +49,24 @@ export class OrderCustomer {
 
   @Prop({ default: '' })
   note: string; // Ghi chú
+
+  @Prop({ default: '', trim: true })
+  size?: string; // Kích cỡ / Size / Phân loại của khách đặt (vd: S, M, L, XL, 39, 40...)
+
+  @Prop({ default: '', trim: true })
+  color?: string; // Màu sắc của sản phẩm/món hàng (vd: Đen, Trắng, Be, Xanh, Hồng...)
+
+  @Prop({ default: '', trim: true })
+  address?: string; // Địa chỉ nhận hàng của khách
+
+  @Prop({ default: 0 })
+  shippingFee?: number; // Phí ship cho khách hàng này
+
+  @Prop({ default: 0 })
+  costPrice?: number; // Tiền vốn tương ứng với khách hàng này
+
+  @Prop({ default: '' })
+  imageUrl?: string; // Hình ảnh riêng của món hàng / khách đặt
 }
 
 export const OrderCustomerSchema = SchemaFactory.createForClass(OrderCustomer);
@@ -57,6 +75,12 @@ export const OrderCustomerSchema = SchemaFactory.createForClass(OrderCustomer);
 export class Order {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   userId: Types.ObjectId;
+
+  @Prop({ default: '', trim: true })
+  size?: string; // Kích cỡ / Size chung của đơn hàng / sản phẩm (nếu có)
+
+  @Prop({ default: '', trim: true })
+  color?: string; // Màu sắc chung của đơn hàng / sản phẩm (nếu có)
 
   @Prop({ required: true })
   orderCode: string; // Mã đơn hàng vd: ORD-1001
@@ -101,6 +125,18 @@ export class Order {
 
   @Prop({ default: '' })
   customerPhone: string;
+
+  @Prop({ default: '', trim: true })
+  customerAddress?: string;
+
+  @Prop({ default: '', trim: true })
+  customerFacebookUrl?: string;
+
+  @Prop({ default: '', trim: true })
+  address?: string;
+
+  @Prop({ default: '', trim: true })
+  facebookUrl?: string;
 
   @Prop({ default: '' })
   note: string;

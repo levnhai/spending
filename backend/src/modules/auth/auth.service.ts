@@ -59,6 +59,30 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
+    // 1. Kiểm tra trạng thái hoạt động
+    if (user.isActive === false) {
+      throw new UnauthorizedException('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.');
+    }
+
+    // 2. Kiểm tra thời hạn thuê bao (ngoại trừ ADMIN)
+    if (user.role !== UserRole.ADMIN && user.subscriptionExpiresAt) {
+      const now = new Date();
+      if (now > new Date(user.subscriptionExpiresAt)) {
+        user.isActive = false;
+        await user.save();
+
+        const expireDateStr = new Intl.DateTimeFormat('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }).format(new Date(user.subscriptionExpiresAt));
+
+        throw new UnauthorizedException(
+          `Tài khoản đã hết hạn sử dụng vào ngày ${expireDateStr}. Vui lòng liên hệ Quản trị viên để gia hạn.`,
+        );
+      }
+    }
+
     const token = this.generateToken(user);
 
     return {
@@ -71,6 +95,10 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         role: user.role || UserRole.PERSONAL,
         hiddenMenus: user.hiddenMenus || [],
+        subscriptionMonths: user.subscriptionMonths,
+        monthlyPrice: user.monthlyPrice,
+        subscriptionStartDate: user.subscriptionStartDate,
+        subscriptionExpiresAt: user.subscriptionExpiresAt,
       },
       token,
     };
@@ -81,6 +109,19 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Người dùng không tồn tại');
     }
+
+    if (user.isActive === false) {
+      throw new UnauthorizedException('Tài khoản của bạn đã bị khóa');
+    }
+
+    if (user.role !== UserRole.ADMIN && user.subscriptionExpiresAt) {
+      if (new Date() > new Date(user.subscriptionExpiresAt)) {
+        user.isActive = false;
+        await user.save();
+        throw new UnauthorizedException('Tài khoản đã hết hạn sử dụng. Vui lòng liên hệ Quản trị viên để gia hạn.');
+      }
+    }
+
     return {
       id: user._id,
       email: user.email,
@@ -90,6 +131,10 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       role: user.role || UserRole.PERSONAL,
       hiddenMenus: user.hiddenMenus || [],
+      subscriptionMonths: user.subscriptionMonths,
+      monthlyPrice: user.monthlyPrice,
+      subscriptionStartDate: user.subscriptionStartDate,
+      subscriptionExpiresAt: user.subscriptionExpiresAt,
     };
   }
 

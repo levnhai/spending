@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   Edit2,
   Trash2,
@@ -12,17 +12,27 @@ import {
   Users,
   ExternalLink,
   Eye,
+  MapPin,
   CheckSquare,
   AlertTriangle,
   FileDown,
-} from 'lucide-react';
-import { Order, OrderStatusType, orderApi, ORDER_STATUS_CONFIG } from '@/entities/order';
-import { OrderStatusDropdown, ExportPdfModal } from '@/features/order-management';
-import { AmountDisplay } from '@/shared/ui/AmountDisplay';
-import { ConfirmModal } from '@/shared/ui/ConfirmModal';
-import { formatVND } from '@/shared/lib/formatters';
-import { useUserStore } from '@/entities/user/useUserStore';
-import { getFullImageUrl } from '@/shared/lib/uploadApi';
+} from "lucide-react";
+import {
+  Order,
+  OrderStatusType,
+  orderApi,
+  ORDER_STATUS_CONFIG,
+} from "@/entities/order";
+import {
+  OrderStatusDropdown,
+  ExportPdfModal,
+  OrderDetailModal,
+} from "@/features/order-management";
+import { AmountDisplay } from "@/shared/ui/AmountDisplay";
+import { ConfirmModal } from "@/shared/ui/ConfirmModal";
+import { formatVND } from "@/shared/lib/formatters";
+import { useUserStore } from "@/entities/user/useUserStore";
+import { getFullImageUrl } from "@/shared/lib/uploadApi";
 
 interface OrderTableProps {
   orders: Order[];
@@ -35,6 +45,46 @@ interface OrderTableProps {
   onLoadMore?: () => void;
 }
 
+// Component hiển thị thumbnail ảnh đơn hàng chống vỡ ảnh
+const OrderThumbnail: React.FC<{
+  src?: string;
+  alt?: string;
+  onClick?: () => void;
+  className?: string;
+}> = ({ src, alt, onClick, className = 'w-11 h-11' }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  if (!src || hasError) {
+    return (
+      <div
+        className={`${className} rounded-xl bg-gradient-to-tr from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700/80 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center text-slate-400 dark:text-slate-500 shrink-0 shadow-sm`}
+      >
+        <Package className="w-5 h-5 opacity-70" />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${className} rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700/80 bg-slate-100 dark:bg-slate-800 shrink-0 hover:opacity-85 active:scale-95 transition-all shadow-sm group relative`}
+      title="Xem ảnh lớn"
+    >
+      <img
+        src={getFullImageUrl(src)}
+        alt={alt || 'Sản phẩm'}
+        onError={() => setHasError(true)}
+        className="w-full h-full object-cover"
+      />
+    </button>
+  );
+};
+
 export const OrderTable: React.FC<OrderTableProps> = ({
   orders,
   loading,
@@ -46,7 +96,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   onLoadMore,
 }) => {
   const showAmount = useUserStore((s) => s.showAmount);
-  const renderAmount = (val: number) => (showAmount ? formatVND(val) : '••••••••');
+  const renderAmount = (val: number) =>
+    showAmount ? formatVND(val) : "••••••••";
 
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +112,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           onLoadMore();
         }
       },
-      { threshold: 0.1, rootMargin: '150px' }
+      { threshold: 0.1, rootMargin: "150px" },
     );
 
     observer.observe(target);
@@ -69,8 +120,16 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   }, [onLoadMore, hasMore, loadingMore, loading]);
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [activeCustomersModal, setActiveCustomersModal] = useState<Order | null>(null);
-  const [orderToDelete, setOrderToDelete] = useState<{ id: string; code: string; title?: string } | null>(null);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(
+    null,
+  );
+  const [activeCustomersModal, setActiveCustomersModal] =
+    useState<Order | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<{
+    id: string;
+    code: string;
+    title?: string;
+  } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // States quản lý checkbox chọn đơn hàng
@@ -92,7 +151,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
   // Chọn/Bỏ chọn một đơn hàng
   const handleToggleSelect = (orderId: string) => {
     setSelectedIds((prev) =>
-      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId],
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId],
     );
   };
 
@@ -121,7 +182,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       setIsBatchDeleteModalOpen(false);
       onDeleted(idsToDelete);
     } catch (e) {
-      alert('Đã xảy ra lỗi khi xóa đơn hàng');
+      alert("Đã xảy ra lỗi khi xóa đơn hàng");
     } finally {
       setIsBatchDeleting(false);
     }
@@ -136,17 +197,17 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       setOrderToDelete(null);
       onDeleted(idToDelete);
     } catch (e) {
-      alert('Không thể xóa đơn hàng');
+      alert("Không thể xóa đơn hàng");
     } finally {
       setIsDeleting(false);
     }
   };
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '---';
+    if (!dateStr) return "---";
     const d = new Date(dateStr);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
@@ -170,7 +231,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           Chưa có đơn hàng nào
         </p>
         <p className="text-xs text-slate-400 max-w-sm mx-auto">
-          Tạo đơn hàng mới để theo dõi sản phẩm, danh sách khách hàng, link Facebook, tổng tiền, tiền đã thanh toán và công nợ.
+          Tạo đơn hàng mới để theo dõi sản phẩm, danh sách khách hàng, link
+          Facebook, tổng tiền, tiền đã thanh toán và công nợ.
         </p>
       </div>
     );
@@ -185,7 +247,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({
     (sum, o) => sum + (Number(o.paidAmount) || 0),
     0,
   );
-  const selectedRemainingAmount = Math.max(0, selectedTotalAmount - selectedPaidAmount);
+  const selectedRemainingAmount = Math.max(
+    0,
+    selectedTotalAmount - selectedPaidAmount,
+  );
 
   return (
     <>
@@ -195,7 +260,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-              Đã chọn <span className="underline">{selectedIds.length}</span> / {orders.length} đơn hàng
+              Đã chọn <span className="underline">{selectedIds.length}</span> /{" "}
+              {orders.length} đơn hàng
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -248,10 +314,16 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   <input
                     ref={headerCheckboxRef}
                     type="checkbox"
-                    checked={orders.length > 0 && selectedIds.length === orders.length}
+                    checked={
+                      orders.length > 0 && selectedIds.length === orders.length
+                    }
                     onChange={handleToggleSelectAll}
                     className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 focus:ring-offset-0 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500"
-                    title={selectedIds.length === orders.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả đơn hàng'}
+                    title={
+                      selectedIds.length === orders.length
+                        ? "Bỏ chọn tất cả"
+                        : "Chọn tất cả đơn hàng"
+                    }
                   />
                 </th>
                 <th className="py-3.5 px-4 text-center w-28">Mã Đơn Hàng</th>
@@ -259,25 +331,30 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 <th className="py-3.5 px-4">Tên Đơn Hàng</th>
                 <th className="py-3.5 px-4">Danh Sách Khách Hàng</th>
                 <th className="py-3.5 px-4">Ngày Lên Đơn</th>
-                <th className="py-3.5 px-4 text-right">Tổng Tiền & Thanh Toán</th>
+                <th className="py-3.5 px-4 text-right">
+                  Tổng Tiền & Thanh Toán
+                </th>
                 <th className="py-3.5 px-4 text-center">Trạng Thái Đơn</th>
                 <th className="py-3.5 px-4 text-center w-24">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
               {orders.map((order) => {
-                const custList = order.customers && order.customers.length > 0
-                  ? order.customers
-                  : [{
-                      name: order.customerName || 'Khách lẻ',
-                      phone: order.customerPhone,
-                      facebookUrl: '',
-                      amount: order.totalAmount,
-                      paidAmount: order.paidAmount,
-                      orderDate: order.orderDate,
-                      status: order.status,
-                      paymentStatus: order.paymentStatus,
-                    }];
+                const custList =
+                  order.customers && order.customers.length > 0
+                    ? order.customers
+                    : [
+                        {
+                          name: order.customerName || "Khách lẻ",
+                          phone: order.customerPhone,
+                          facebookUrl: "",
+                          amount: order.totalAmount,
+                          paidAmount: order.paidAmount,
+                          orderDate: order.orderDate,
+                          status: order.status,
+                          paymentStatus: order.paymentStatus,
+                        },
+                      ];
                 const mainCustomer = custList[0];
                 const extraCount = custList.length - 1;
 
@@ -291,8 +368,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     key={order._id}
                     className={`transition-colors ${
                       isSelected
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/15 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15'
-                        : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/30'
+                        ? "bg-emerald-500/10 hover:bg-emerald-500/15 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15"
+                        : "hover:bg-slate-50/80 dark:hover:bg-slate-800/30"
                     }`}
                   >
                     {/* CỘT CHECKBOX TỪNG ĐƠN HÀNG */}
@@ -302,46 +379,49 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                         checked={isSelected}
                         onChange={() => handleToggleSelect(order._id)}
                         className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 focus:ring-offset-0 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500"
-                        title={isSelected ? 'Bỏ chọn đơn này' : 'Chọn đơn này'}
+                        title={isSelected ? "Bỏ chọn đơn này" : "Chọn đơn này"}
                       />
                     </td>
 
                     {/* MÃ ĐƠN HÀNG (Thay thế STT) */}
                     <td className="py-3.5 px-4 text-center">
-                      <span className="font-mono text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20 shadow-sm inline-block">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderDetail(order)}
+                        className="font-mono text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-2.5 py-1 rounded-xl border border-emerald-500/20 shadow-sm inline-block transition-colors cursor-pointer"
+                        title="Xem chi tiết đơn hàng"
+                      >
                         {order.orderCode}
-                      </span>
+                      </button>
                     </td>
 
                     {/* Image */}
                     <td className="py-3.5 px-4 text-center">
-                      {order.imageUrl ? (
-                        <button
-                          type="button"
+                      <div className="flex items-center justify-center">
+                        <OrderThumbnail
+                          src={order.imageUrl}
+                          alt={order.title}
                           onClick={() => setPreviewImage(order.imageUrl || null)}
-                          className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:opacity-80 transition-opacity inline-block group relative"
-                          title="Xem ảnh lớn"
-                        >
-                          <img
-                            src={getFullImageUrl(order.imageUrl)}
-                            alt={order.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 mx-auto">
-                          <ImageIcon className="w-4 h-4 opacity-50" />
-                        </div>
-                      )}
+                          className="w-10 h-10"
+                        />
+                      </div>
                     </td>
 
                     {/* Title */}
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900 dark:text-white text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderDetail(order)}
+                        className="font-bold text-slate-900 dark:text-white text-sm hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer"
+                        title="Xem chi tiết đơn hàng"
+                      >
                         {order.title}
-                      </div>
+                      </button>
                       {order.note && (
-                        <div className="text-[11px] text-slate-400 truncate max-w-xs mt-0.5" title={order.note}>
+                        <div
+                          className="text-[11px] text-slate-400 truncate max-w-xs mt-0.5"
+                          title={order.note}
+                        >
                           • {order.note}
                         </div>
                       )}
@@ -351,7 +431,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-500 font-bold text-[10px] flex items-center justify-center shrink-0">
-                          {mainCustomer?.name ? mainCustomer.name.charAt(0).toUpperCase() : 'K'}
+                          {mainCustomer?.name
+                            ? mainCustomer.name.charAt(0).toUpperCase()
+                            : "K"}
                         </div>
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {mainCustomer?.name}
@@ -359,6 +441,16 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                         <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/20">
                           SL: {mainCustomer?.quantity || 1}
                         </span>
+                        {(mainCustomer?.size || order.size) && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px] border border-purple-500/20">
+                            Size: {mainCustomer?.size || order.size}
+                          </span>
+                        )}
+                        {(mainCustomer?.color || order.color) && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px] border border-amber-500/20">
+                            Màu: {mainCustomer?.color || order.color}
+                          </span>
+                        )}
 
                         {extraCount > 0 && (
                           <button
@@ -380,13 +472,19 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                             {mainCustomer.phone}
                           </span>
                         )}
-                        {mainCustomer?.facebookUrl && (
+                        {(mainCustomer?.address || order.customerAddress || order.address) && (
+                          <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 truncate max-w-xs" title={mainCustomer?.address || order.customerAddress || order.address}>
+                            <MapPin className="w-3 h-3 shrink-0 text-rose-500" />
+                            <span className="truncate">{mainCustomer?.address || order.customerAddress || order.address}</span>
+                          </span>
+                        )}
+                        {(mainCustomer?.facebookUrl || order.customerFacebookUrl || order.facebookUrl) && (
                           <a
-                            href={mainCustomer.facebookUrl}
+                            href={mainCustomer?.facebookUrl || order.customerFacebookUrl || order.facebookUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-500 hover:underline flex items-center gap-0.5 font-medium"
-                            title={mainCustomer.facebookUrl}
+                            title={mainCustomer?.facebookUrl || order.customerFacebookUrl || order.facebookUrl}
                           >
                             <ExternalLink className="w-3 h-3" />
                             <span>FB Link</span>
@@ -399,7 +497,11 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     <td className="py-3.5 px-4 font-medium text-slate-500 dark:text-slate-400">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{formatDate(order.orderDate || mainCustomer?.orderDate)}</span>
+                        <span>
+                          {formatDate(
+                            order.orderDate || mainCustomer?.orderDate,
+                          )}
+                        </span>
                       </div>
                     </td>
 
@@ -426,7 +528,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                       <OrderStatusDropdown
                         orderId={order._id}
                         currentStatus={order.status}
-                        onStatusChanged={(newStatus) => onStatusChanged(order._id, newStatus)}
+                        onStatusChanged={(newStatus) =>
+                          onStatusChanged(order._id, newStatus)
+                        }
                       />
                     </td>
 
@@ -434,14 +538,30 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
+                          type="button"
+                          onClick={() => setSelectedOrderDetail(order)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                          title="Xem chi tiết đơn hàng"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => onEdit(order)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors cursor-pointer"
                           title="Chỉnh sửa đơn hàng"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setOrderToDelete({ id: order._id, code: order.orderCode, title: order.title })}
+                          type="button"
+                          onClick={() =>
+                            setOrderToDelete({
+                              id: order._id,
+                              code: order.orderCode,
+                              title: order.title,
+                            })
+                          }
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                           title="Xóa đơn hàng"
                         >
@@ -460,21 +580,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       {/* MOBILE CARD LIST VIEW */}
       <div className="lg:hidden max-h-[620px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
         {orders.map((order) => {
-          const custList = order.customers && order.customers.length > 0
-            ? order.customers
-            : [{
-                name: order.customerName || 'Khách lẻ',
-                phone: order.customerPhone,
-                facebookUrl: '',
-                amount: order.totalAmount,
-                paidAmount: order.paidAmount,
-                orderDate: order.orderDate,
-                status: order.status,
-                paymentStatus: order.paymentStatus,
-              }];
+          const custList =
+            order.customers && order.customers.length > 0
+              ? order.customers
+              : [
+                  {
+                    name: order.customerName || "Khách lẻ",
+                    phone: order.customerPhone,
+                    facebookUrl: "",
+                    amount: order.totalAmount,
+                    paidAmount: order.paidAmount,
+                    orderDate: order.orderDate,
+                    status: order.status,
+                    paymentStatus: order.paymentStatus,
+                  },
+                ];
           const mainCustomer = custList[0];
           const extraCount = custList.length - 1;
 
+          const totalQty = custList.reduce(
+            (sum, c) => sum + (Number(c.quantity) || 1),
+            0,
+          );
           const orderTotal = Number(order.totalAmount) || 0;
           const orderPaid = Number(order.paidAmount) || 0;
           const orderRemaining = Math.max(0, orderTotal - orderPaid);
@@ -484,122 +611,160 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           return (
             <div
               key={order._id}
-              className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-sm space-y-3 transition-colors ${
+              className={`p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-sm space-y-3 transition-all ${
                 isSelected
-                  ? 'border-emerald-500/60 bg-emerald-500/5 dark:bg-emerald-500/5 ring-1 ring-emerald-500/30'
-                  : 'border-slate-200 dark:border-slate-800'
+                  ? "border-emerald-500/60 bg-emerald-500/5 dark:bg-emerald-500/5 ring-1 ring-emerald-500/30"
+                  : "border-slate-200 dark:border-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {/* Checkbox mobile */}
+              {/* Row 1: Top Bar (Checkbox + Mã đơn + Ngày lên đơn + Status Dropdown) */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => handleToggleSelect(order._id)}
                     className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500 shrink-0"
-                    title={isSelected ? 'Bỏ chọn' : 'Chọn'}
+                    title={isSelected ? "Bỏ chọn" : "Chọn"}
                   />
-
-                  {/* Image */}
-                  {order.imageUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewImage(order.imageUrl || null)}
-                      className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0"
-                    >
-                      <img
-                        src={getFullImageUrl(order.imageUrl)}
-                        alt={order.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
-                      <Package className="w-5 h-5" />
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] font-extrabold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                        {order.orderCode}
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-sm text-slate-900 dark:text-white mt-1">
-                      {order.title}
-                    </h4>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetail(order)}
+                    className="font-mono text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/20 shadow-xs shrink-0 transition-colors cursor-pointer"
+                    title="Xem chi tiết đơn hàng"
+                  >
+                    {order.orderCode}
+                  </button>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-medium truncate">
+                    <Calendar className="w-3 h-3 opacity-60 shrink-0" />
+                    {formatDate(order.orderDate || mainCustomer?.orderDate)}
+                  </span>
                 </div>
 
-                {/* Status */}
-                <OrderStatusDropdown
-                  orderId={order._id}
-                  currentStatus={order.status}
-                  onStatusChanged={(newStatus) => onStatusChanged(order._id, newStatus)}
-                />
+                <div className="shrink-0">
+                  <OrderStatusDropdown
+                    orderId={order._id}
+                    currentStatus={order.status}
+                    onStatusChanged={(newStatus) =>
+                      onStatusChanged(order._id, newStatus)
+                    }
+                  />
+                </div>
               </div>
 
-              {/* Customers & Date */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {mainCustomer?.name}
+              {/* Row 2: Product information (Thumbnail + Title + Quantity) */}
+              <div className="flex items-start gap-3">
+                <OrderThumbnail
+                  src={order.imageUrl}
+                  alt={order.title}
+                  onClick={() => setPreviewImage(order.imageUrl || null)}
+                  className="w-12 h-12"
+                />
+
+                <div className="flex-1 min-w-0 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetail(order)}
+                    className="font-bold text-sm text-slate-900 dark:text-white leading-snug line-clamp-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer block"
+                    title="Xem chi tiết đơn hàng"
+                  >
+                    {order.title}
+                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                      SL: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{totalQty}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Customer Bar */}
+              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    {mainCustomer?.name ? mainCustomer.name.charAt(0).toUpperCase() : "K"}
+                  </div>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {mainCustomer?.name || "Khách lẻ"}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/20">
-                    SL: {mainCustomer?.quantity || 1}
-                  </span>
-                  {mainCustomer?.facebookUrl && (
-                    <a
-                      href={mainCustomer.facebookUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline flex items-center gap-0.5 text-[11px]"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>FB</span>
-                    </a>
-                  )}
                   {extraCount > 0 && (
                     <button
                       type="button"
                       onClick={() => setActiveCustomersModal(order)}
-                      className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded"
+                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0"
                     >
                       +{extraCount} khách
                     </button>
                   )}
                 </div>
-                <span>{formatDate(order.orderDate || mainCustomer?.orderDate)}</span>
+
+                {/* SĐT khách hàng nằm sát lề bên phải */}
+                {(mainCustomer?.phone || order.customerPhone) && (
+                  <a
+                    href={`tel:${mainCustomer?.phone || order.customerPhone}`}
+                    className="flex items-center gap-1 font-mono text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 shrink-0 transition-colors"
+                    title={`Gọi cho ${mainCustomer?.name || "khách"}`}
+                  >
+                    <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span>{mainCustomer?.phone || order.customerPhone}</span>
+                  </a>
+                )}
               </div>
 
-              {/* Price Breakdown & Actions */}
-              <div className="flex items-center justify-between pt-1">
+              {/* Row 4: Price & Action buttons */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
                 <div>
-                  <div className="font-extrabold text-base text-slate-900 dark:text-white">
+                  <div className="font-black text-base text-slate-900 dark:text-white leading-none">
                     <AmountDisplay
                       amount={orderTotal}
-                      className="font-extrabold text-base text-slate-900 dark:text-white"
+                      className="font-black text-base text-slate-900 dark:text-white"
                     />
                   </div>
-                  <div className="text-[11px] text-slate-400 space-x-1">
-                    <span className="text-emerald-500 font-semibold">Đã thu: {renderAmount(orderPaid)}</span>
-                    {orderRemaining > 0 && (
-                      <span className="text-amber-500 font-semibold">| Nợ: {renderAmount(orderRemaining)}</span>
+                  <div className="text-[11px] mt-1.5 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                      Đã thu: {renderAmount(orderPaid)}
+                    </span>
+                    {orderRemaining > 0 ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.2 rounded bg-amber-500/10 border border-amber-500/20 text-[10px]">
+                        Nợ: {renderAmount(orderRemaining)}
+                      </span>
+                    ) : (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium text-[10px]">
+                        (Đã thu đủ)
+                      </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => onEdit(order)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    type="button"
+                    onClick={() => setSelectedOrderDetail(order)}
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+                    title="Xem chi tiết đơn hàng"
                   >
-                    Sửa
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Chi tiết</span>
                   </button>
                   <button
-                    onClick={() => setOrderToDelete({ id: order._id, code: order.orderCode, title: order.title })}
-                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer"
+                    type="button"
+                    onClick={() => onEdit(order)}
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    <span>Sửa</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOrderToDelete({
+                        id: order._id,
+                        code: order.orderCode,
+                        title: order.title,
+                      })
+                    }
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    title="Xóa đơn hàng"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -611,7 +776,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       </div>
 
       {/* INFINITE SCROLL SENTINEL & LOADING INDICATOR */}
-      <div ref={observerTargetRef} className="py-4 flex flex-col items-center justify-center gap-2">
+      <div
+        ref={observerTargetRef}
+        className="py-4 flex flex-col items-center justify-center gap-2"
+      >
         {loadingMore && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
             <div className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
@@ -641,10 +809,15 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 <Users className="w-5 h-5 text-emerald-500" />
                 <div>
                   <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    Chi Tiết Khách Hàng({activeCustomersModal.customers?.length || 1})
+                    Chi Tiết Khách Hàng(
+                    {activeCustomersModal.customers?.length || 1})
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Đơn hàng: <span className="font-semibold text-slate-700 dark:text-slate-200">{activeCustomersModal.title}</span> ({activeCustomersModal.orderCode})
+                    Đơn hàng:{" "}
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {activeCustomersModal.title}
+                    </span>{" "}
+                    ({activeCustomersModal.orderCode})
                   </p>
                 </div>
               </div>
@@ -657,13 +830,14 @@ export const OrderTable: React.FC<OrderTableProps> = ({
             </div>
 
             <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-              {(activeCustomersModal.customers && activeCustomersModal.customers.length > 0
+              {(activeCustomersModal.customers &&
+              activeCustomersModal.customers.length > 0
                 ? activeCustomersModal.customers
                 : [
                     {
-                      name: activeCustomersModal.customerName || 'Khách lẻ',
+                      name: activeCustomersModal.customerName || "Khách lẻ",
                       phone: activeCustomersModal.customerPhone,
-                      facebookUrl: '',
+                      facebookUrl: "",
                       amount: activeCustomersModal.totalAmount,
                       paidAmount: activeCustomersModal.paidAmount,
                       orderDate: activeCustomersModal.orderDate,
@@ -673,7 +847,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     },
                   ]
               ).map((cust, i) => {
-                const conf = ORDER_STATUS_CONFIG[cust.status || 'ORDERED'] || ORDER_STATUS_CONFIG.ORDERED;
+                const conf =
+                  ORDER_STATUS_CONFIG[cust.status || "ORDERED"] ||
+                  ORDER_STATUS_CONFIG.ORDERED;
                 const cAmount = Number(cust.amount) || 0;
                 const cPaid = Number(cust.paidAmount) || 0;
                 const cRemaining = Math.max(0, cAmount - cPaid);
@@ -685,17 +861,43 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-lg bg-emerald-500 text-white font-bold flex items-center justify-center text-xs">
-                          {i + 1}
-                        </span>
+                        {cust.imageUrl ? (
+                          <a
+                            href={cust.imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative group shrink-0 cursor-pointer"
+                            title="Bấm để xem ảnh kích thước gốc"
+                          >
+                            <img
+                              src={cust.imageUrl}
+                              alt={cust.name}
+                              className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105"
+                            />
+                          </a>
+                        ) : (
+                          <span className="w-6 h-6 rounded-lg bg-emerald-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                            {i + 1}
+                          </span>
+                        )}
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-sm text-slate-900 dark:text-white">
                               {cust.name}
                             </p>
                             <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-500/20">
                               SL: {cust.quantity || 1}
                             </span>
+                            {(cust.size || activeCustomersModal.size) && (
+                              <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs border border-purple-500/20">
+                                Size: {cust.size || activeCustomersModal.size}
+                              </span>
+                            )}
+                            {(cust.color || activeCustomersModal.color) && (
+                              <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-500/20">
+                                Màu: {cust.color || activeCustomersModal.color}
+                              </span>
+                            )}
                             {cust.facebookUrl && (
                               <a
                                 href={cust.facebookUrl}
@@ -709,12 +911,20 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                               </a>
                             )}
                           </div>
-                          {cust.phone && (
-                            <p className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
-                              <Phone className="w-3 h-3" />
-                              <span>{cust.phone}</span>
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap">
+                            {cust.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                <span>{cust.phone}</span>
+                              </span>
+                            )}
+                            {cust.address && (
+                              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                                <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                                <span>{cust.address}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -728,24 +938,45 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     {/* Money Breakdown for this customer */}
                     <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 grid grid-cols-3 gap-2 text-center">
                       <div>
-                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Tổng tiền</span>
-                        <span className="font-extrabold text-slate-900 dark:text-white">{renderAmount(cAmount)}</span>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">
+                          Tổng tiền
+                        </span>
+                        <span className="font-extrabold text-slate-900 dark:text-white">
+                          {renderAmount(cAmount)}
+                        </span>
                       </div>
                       <div className="border-x border-slate-100 dark:border-slate-800">
-                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Đã trả</span>
-                        <span className="font-extrabold text-emerald-500">{renderAmount(cPaid)}</span>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">
+                          Đã trả
+                        </span>
+                        <span className="font-extrabold text-emerald-500">
+                          {renderAmount(cPaid)}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Còn nợ</span>
-                        <span className={`font-extrabold ${cRemaining > 0 ? 'text-amber-500' : 'text-slate-400'}`}>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">
+                          Còn nợ
+                        </span>
+                        <span
+                          className={`font-extrabold ${cRemaining > 0 ? "text-amber-500" : "text-slate-400"}`}
+                        >
                           {renderAmount(cRemaining)}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                      <span>Ngày tạo: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{formatDate(cust.orderDate)}</strong></span>
-                      {cust.note && <span className="italic truncate max-w-xs">Ghi chú: {cust.note}</span>}
+                      <span>
+                        Ngày tạo:{" "}
+                        <strong className="text-slate-700 dark:text-slate-300 font-semibold">
+                          {formatDate(cust.orderDate)}
+                        </strong>
+                      </span>
+                      {cust.note && (
+                        <span className="italic truncate max-w-xs">
+                          Ghi chú: {cust.note}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -756,7 +987,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
             <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-500">
-                  Tổng đơn ({activeCustomersModal.customers?.length || 1} khách):
+                  Tổng đơn ({activeCustomersModal.customers?.length || 1}{" "}
+                  khách):
                 </span>
                 <span className="text-base font-extrabold text-slate-900 dark:text-white ml-2">
                   {renderAmount(activeCustomersModal.totalAmount || 0)}
@@ -764,10 +996,20 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               </div>
 
               <div className="text-right text-xs">
-                <span className="text-emerald-500 font-bold">Đã thu: {renderAmount(activeCustomersModal.paidAmount || 0)}</span>
-                {Math.max(0, (activeCustomersModal.totalAmount || 0) - (activeCustomersModal.paidAmount || 0)) > 0 && (
+                <span className="text-emerald-500 font-bold">
+                  Đã thu: {renderAmount(activeCustomersModal.paidAmount || 0)}
+                </span>
+                {Math.max(
+                  0,
+                  (activeCustomersModal.totalAmount || 0) -
+                    (activeCustomersModal.paidAmount || 0),
+                ) > 0 && (
                   <span className="text-amber-500 font-bold ml-2">
-                    | Còn nợ: {renderAmount((activeCustomersModal.totalAmount || 0) - (activeCustomersModal.paidAmount || 0))}
+                    | Còn nợ:{" "}
+                    {renderAmount(
+                      (activeCustomersModal.totalAmount || 0) -
+                        (activeCustomersModal.paidAmount || 0),
+                    )}
                   </span>
                 )}
               </div>
@@ -793,7 +1035,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={getFullImageUrl(previewImage || '')}
+              src={getFullImageUrl(previewImage || "")}
               alt="Ảnh đơn hàng"
               className="max-h-[80vh] w-auto object-contain rounded-2xl mx-auto"
             />
@@ -811,15 +1053,17 @@ export const OrderTable: React.FC<OrderTableProps> = ({
         message={
           <div className="space-y-3 text-left">
             <p className="text-slate-600 dark:text-slate-300 text-sm">
-              Bạn có chắc chắn muốn xóa đơn hàng{' '}
+              Bạn có chắc chắn muốn xóa đơn hàng{" "}
               <strong className="text-rose-500 font-bold font-mono">
                 {orderToDelete?.code}
               </strong>
-              {orderToDelete?.title ? ` - ${orderToDelete.title}` : ''}?
+              {orderToDelete?.title ? ` - ${orderToDelete.title}` : ""}?
             </p>
             <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>Dữ liệu đơn hàng này sẽ bị xóa vĩnh viễn và không thể khôi phục.</span>
+              <span>
+                Dữ liệu đơn hàng này sẽ bị xóa vĩnh viễn và không thể khôi phục.
+              </span>
             </div>
           </div>
         }
@@ -840,14 +1084,20 @@ export const OrderTable: React.FC<OrderTableProps> = ({
         message={
           <div className="space-y-3 text-left">
             <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
-              Bạn có chắc chắn muốn <span className="text-rose-500 font-bold">xóa vĩnh viễn</span>{' '}
-              <span className="font-extrabold text-slate-900 dark:text-white">{selectedIds.length} đơn hàng</span> này khỏi hệ thống?
+              Bạn có chắc chắn muốn{" "}
+              <span className="text-rose-500 font-bold">xóa vĩnh viễn</span>{" "}
+              <span className="font-extrabold text-slate-900 dark:text-white">
+                {selectedIds.length} đơn hàng
+              </span>{" "}
+              này khỏi hệ thống?
             </p>
 
             {/* Danh sách mã đơn hàng sẽ bị xóa */}
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-semibold">Các đơn hàng:</span>
+                <span className="text-slate-400 font-semibold">
+                  Các đơn hàng:
+                </span>
                 <span className="font-bold text-rose-500">
                   Tổng tiền: {renderAmount(selectedTotalAmount)}
                 </span>
@@ -860,7 +1110,11 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                     title={o.title}
                   >
                     <span>{o.orderCode}</span>
-                    {o.title && <span className="text-slate-400 font-sans truncate max-w-[90px]">({o.title})</span>}
+                    {o.title && (
+                      <span className="text-slate-400 font-sans truncate max-w-[90px]">
+                        ({o.title})
+                      </span>
+                    )}
                   </span>
                 ))}
               </div>
@@ -897,7 +1151,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
-                      Danh Sách Đơn Hàng Đã Chọn
+                      Danh Sách Đơn Hàng
                     </h3>
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20">
                       {selectedOrders.length} đơn
@@ -960,19 +1214,25 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                       <th className="py-3 px-4">Tên đơn hàng</th>
                       <th className="py-3 px-4">Khách hàng</th>
                       <th className="py-3 px-4">Ngày lên đơn</th>
-                      <th className="py-3 px-4 text-right">Tổng tiền & Đã thu</th>
+                      <th className="py-3 px-4 text-right">
+                        Tổng tiền & Đã thu
+                      </th>
                       <th className="py-3 px-4 text-center w-36">Trạng thái</th>
                       <th className="py-3 px-3 text-center w-14">Bỏ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {selectedOrders.map((order) => {
-                      const statusConfig = ORDER_STATUS_CONFIG[order.status] || {
+                      const statusConfig = ORDER_STATUS_CONFIG[
+                        order.status
+                      ] || {
                         label: order.status,
-                        color: 'bg-slate-500/10 text-slate-500',
+                        color: "bg-slate-500/10 text-slate-500",
                       };
                       const custName =
-                        order.customers?.[0]?.name || order.customerName || 'Khách lẻ';
+                        order.customers?.[0]?.name ||
+                        order.customerName ||
+                        "Khách lẻ";
 
                       return (
                         <tr
@@ -985,31 +1245,24 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                             </span>
                           </td>
                           <td className="py-3 px-3 text-center">
-                            {order.imageUrl ? (
-                              <button
-                                type="button"
+                            <div className="flex items-center justify-center">
+                              <OrderThumbnail
+                                src={order.imageUrl}
+                                alt={order.title}
                                 onClick={() => setPreviewImage(order.imageUrl || null)}
-                                className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 mx-auto block hover:opacity-80 transition-opacity"
-                                title="Xem ảnh lớn"
-                              >
-                                <img
-                                  src={getFullImageUrl(order.imageUrl)}
-                                  alt={order.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              </button>
-                            ) : (
-                              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 mx-auto">
-                                <ImageIcon className="w-4 h-4 opacity-50" />
-                              </div>
-                            )}
+                                className="w-10 h-10"
+                              />
+                            </div>
                           </td>
                           <td className="py-3 px-4 font-bold text-slate-900 dark:text-white text-sm">
                             <div className="line-clamp-1" title={order.title}>
                               {order.title}
                             </div>
                             {order.note && (
-                              <div className="text-[11px] text-slate-400 truncate mt-0.5" title={order.note}>
+                              <div
+                                className="text-[11px] text-slate-400 truncate mt-0.5"
+                                title={order.note}
+                              >
                                 • {order.note}
                               </div>
                             )}
@@ -1022,18 +1275,31 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                               <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] shrink-0 border border-indigo-500/20">
                                 SL: {order.customers?.[0]?.quantity || 1}
                               </span>
+                              {(order.customers?.[0]?.size || order.size) && (
+                                <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px] shrink-0 border border-purple-500/20">
+                                  Size: {order.customers?.[0]?.size || order.size}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{formatDate(order.orderDate || order.customers?.[0]?.orderDate)}</span>
+                              <span>
+                                {formatDate(
+                                  order.orderDate ||
+                                    order.customers?.[0]?.orderDate,
+                                )}
+                              </span>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-white">
-                            <div className="text-sm">{renderAmount(Number(order.totalAmount) || 0)}</div>
+                            <div className="text-sm">
+                              {renderAmount(Number(order.totalAmount) || 0)}
+                            </div>
                             <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">
-                              Đã thu: {renderAmount(Number(order.paidAmount) || 0)}
+                              Đã thu:{" "}
+                              {renderAmount(Number(order.paidAmount) || 0)}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -1113,6 +1379,17 @@ export const OrderTable: React.FC<OrderTableProps> = ({
         onClose={() => setIsExportPdfModalOpen(false)}
         orders={selectedOrders}
       />
+
+      {/* MODAL XEM CHI TIẾT ĐƠN HÀNG */}
+      <OrderDetailModal
+        order={selectedOrderDetail}
+        isOpen={!!selectedOrderDetail}
+        onClose={() => setSelectedOrderDetail(null)}
+        onEdit={onEdit}
+        onStatusChanged={onStatusChanged}
+        onPreviewImage={(url) => setPreviewImage(url)}
+      />
     </>
   );
 };
+

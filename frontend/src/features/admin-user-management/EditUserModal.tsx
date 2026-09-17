@@ -1,57 +1,81 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
-  UserPlus,
+  UserCheck,
   Mail,
   Lock,
   User,
   Shield,
   AlertCircle,
   CheckCircle2,
-  Calendar,
-  CreditCard,
+  UserX,
   Clock,
+  Calendar,
+  RefreshCw,
+  Plus,
 } from 'lucide-react';
-import { adminApi, AdminRoleType } from '@/entities/admin';
+import { adminApi, AdminRoleType, AdminUser } from '@/entities/admin';
 
-interface CreateUserModalProps {
+interface EditUserModalProps {
   isOpen: boolean;
+  user: AdminUser | null;
   onClose: () => void;
   onSuccess: () => void;
+  currentUserId?: string;
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({
+export const EditUserModal: React.FC<EditUserModalProps> = ({
   isOpen,
+  user,
   onClose,
   onSuccess,
+  currentUserId,
 }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<AdminRoleType>('PERSONAL');
-  const [subscriptionMonths, setSubscriptionMonths] = useState<number | null>(1);
-  const [monthlyPrice, setMonthlyPrice] = useState<string>('');
+  const [isActive, setIsActive] = useState<boolean>(true);
+  const [monthlyPrice, setMonthlyPrice] = useState<string>('0');
+  const [expiresAtStr, setExpiresAtStr] = useState<string>('');
+  
+  // State gia hạn
+  const [renewMonths, setRenewMonths] = useState<number>(1);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [renewSuccessMsg, setRenewSuccessMsg] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (user) {
+      setFullName(user.fullName || '');
+      setEmail(user.email || '');
+      setRole(user.role || 'PERSONAL');
+      setIsActive(user.isActive !== false);
+      setMonthlyPrice((user.monthlyPrice || 0).toLocaleString('vi-VN'));
+      setPassword('');
+      setError(null);
+      setRenewSuccessMsg(null);
 
+      if (user.subscriptionExpiresAt) {
+        const d = new Date(user.subscriptionExpiresAt);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        setExpiresAtStr(`${yyyy}-${mm}-${dd}`);
+      } else {
+        setExpiresAtStr('');
+      }
+    }
+  }, [user, isOpen]);
+
+  if (!isOpen || !user) return null;
+
+  const isSelf = currentUserId === user.id;
   const rawMonthlyPrice = parseInt(monthlyPrice.replace(/\D/g, ''), 10) || 0;
-  const totalAmount = subscriptionMonths ? subscriptionMonths * rawMonthlyPrice : rawMonthlyPrice;
-
-  // Tính ngày hết hạn dự kiến
-  const calculateExpiryDate = () => {
-    if (!subscriptionMonths) return 'Vĩnh viễn (Không giới hạn)';
-    const exp = new Date();
-    exp.setMonth(exp.getMonth() + subscriptionMonths);
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(exp);
-  };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '');
@@ -63,38 +87,58 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     setMonthlyPrice(num.toLocaleString('vi-VN'));
   };
 
+  const handleQuickRenew = async (months: number) => {
+    setError(null);
+    setRenewSuccessMsg(null);
+    setIsRenewing(true);
+    try {
+      const res = await adminApi.renewSubscription(user.id, {
+        months,
+        monthlyPrice: rawMonthlyPrice,
+      });
+      setRenewSuccessMsg(res.message);
+      setIsActive(true);
+      if (res.subscriptionExpiresAt) {
+        const d = new Date(res.subscriptionExpiresAt);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        setExpiresAtStr(`${yyyy}-${mm}-${dd}`);
+      }
+      onSuccess();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Không thể gia hạn thuê bao';
+      setError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setIsRenewing(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!fullName.trim() || !email.trim() || !password.trim()) {
-      setError('Vui lòng điền đầy đủ tất cả các trường');
+    if (!fullName.trim() || !email.trim()) {
+      setError('Họ và tên và Email không được để trống');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Mật khẩu phải có độ dài tối thiểu 6 ký tự');
+    if (password.trim() && password.trim().length < 6) {
+      setError('Mật khẩu mới phải từ 6 ký tự trở lên');
       return;
     }
 
     setLoading(true);
     try {
-      await adminApi.createUser({
+      await adminApi.updateUser(user.id, {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        password,
         role,
-        subscriptionMonths: subscriptionMonths || undefined,
+        isActive,
         monthlyPrice: rawMonthlyPrice,
+        subscriptionExpiresAt: expiresAtStr ? new Date(expiresAtStr).toISOString() : undefined,
+        password: password.trim() ? password.trim() : undefined,
       });
-
-      // Reset form
-      setFullName('');
-      setEmail('');
-      setPassword('');
-      setRole('PERSONAL');
-      setSubscriptionMonths(1);
-      setMonthlyPrice('');
 
       onSuccess();
       onClose();
@@ -102,7 +146,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
       const msg =
         err.response?.data?.message ||
         err.message ||
-        'Không thể tạo tài khoản người dùng';
+        'Không thể cập nhật thông tin người dùng';
       setError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setLoading(false);
@@ -124,14 +168,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         {/* Title */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-600/20 text-white shrink-0">
-            <UserPlus className="w-6 h-6" />
+            <User className="w-6 h-6" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">
-              Thêm Người Dùng Mới
+              Chỉnh Sửa & Gia Hạn Thuê Bao
             </h2>
             <p className="text-xs text-slate-400">
-              Tạo tài khoản và thiết lập gói thời hạn thuê bao
+              Cập nhật thông tin, thời hạn gói và phân quyền tài khoản
             </p>
           </div>
         </div>
@@ -140,6 +184,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           <div className="mb-5 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {renewSuccessMsg && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>{renewSuccessMsg}</span>
           </div>
         )}
 
@@ -180,19 +231,23 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </div>
           </div>
 
-          {/* Password */}
+          {/* New Password (Optional) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Mật khẩu ban đầu
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                Đặt lại mật khẩu mới
+              </label>
+              <span className="text-[11px] text-slate-500 italic">
+                (Để trống nếu không đổi)
+              </span>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="•••••••• (Tối thiểu 6 ký tự)"
-                required
+                placeholder="Nhập mật khẩu mới từ 6 ký tự..."
                 minLength={6}
                 className="w-full bg-slate-800/80 border border-slate-700/80 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
               />
@@ -215,7 +270,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 }`}
               >
                 <User className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs">Cá Nhân</span>
+                <span className="text-xs font-bold">Cá Nhân</span>
               </button>
 
               <button
@@ -228,7 +283,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 }`}
               >
                 <Shield className="w-4 h-4 text-orange-400" />
-                <span className="text-xs">Bán Hàng</span>
+                <span className="text-xs font-bold">Bán Hàng</span>
               </button>
 
               <button
@@ -241,58 +296,65 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 }`}
               >
                 <Shield className="w-4 h-4 text-purple-400" />
-                <span className="text-xs">Quản Trị</span>
+                <span className="text-xs font-bold">Quản Trị</span>
               </button>
             </div>
+            {isSelf && role !== 'ADMIN' && (
+              <p className="text-[11px] text-amber-400 mt-1.5">
+                ⚠️ Lưu ý: Bạn đang chỉnh sửa tài khoản của chính mình.
+              </p>
+            )}
           </div>
 
           {/* Gói thuê bao & Thời hạn sử dụng */}
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3.5">
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-white">
                 <Clock className="w-4 h-4 text-purple-400" />
-                <span>Gói Thuê Bao & Thời Hạn</span>
+                <span>Quản Lý Thời Hạn & Gia Hạn Thuê Bao</span>
               </div>
-              <span className="text-[11px] text-purple-400 font-semibold">
-                Hết hạn: {calculateExpiryDate()}
-              </span>
             </div>
 
-            {/* Quick months selection */}
+            {/* Quick Renew Buttons */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
-                Thời gian mua (Số tháng)
+                ⚡ Gia hạn nhanh thêm thời gian:
               </label>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                {[
-                  { label: '1 tháng', val: 1 },
-                  { label: '2 tháng', val: 2 },
-                  { label: '3 tháng', val: 3 },
-                  { label: '6 tháng', val: 6 },
-                  { label: '12 tháng', val: 12 },
-                  { label: 'Vĩnh viễn', val: null },
-                ].map((item) => (
+              <div className="grid grid-cols-4 gap-1.5">
+                {[1, 2, 3, 6, 12].slice(0, 4).map((m) => (
                   <button
-                    key={String(item.val)}
+                    key={m}
                     type="button"
-                    onClick={() => setSubscriptionMonths(item.val)}
-                    className={`py-2 px-1.5 rounded-xl border text-[11px] font-bold transition-all text-center ${
-                      subscriptionMonths === item.val
-                        ? 'bg-purple-600 border-purple-500 text-white shadow-sm'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                    }`}
+                    disabled={isRenewing}
+                    onClick={() => handleQuickRenew(m)}
+                    className="py-2 px-2 rounded-xl bg-purple-600/20 hover:bg-purple-600 border border-purple-500/30 hover:border-purple-500 text-purple-300 hover:text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50"
                   >
-                    {item.label}
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+{m} tháng</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Custom monthly price input */}
+            {/* Manual Date & Price */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
-                  {subscriptionMonths ? 'Số tiền / tháng (Admin tự nhập)' : 'Số tiền trọn gói (Admin tự nhập)'}
+                  Ngày hết hạn (Tuỳ chỉnh)
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={expiresAtStr}
+                    onChange={(e) => setExpiresAtStr(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
+                  Số tiền / tháng (Admin tự nhập)
                 </label>
                 <div className="relative">
                   <input
@@ -307,20 +369,44 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
-                  Tổng số tiền dự tính
-                </label>
-                <div className="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-black flex items-center justify-between">
-                  <span>{totalAmount.toLocaleString('vi-VN')} ₫</span>
-                  {subscriptionMonths && rawMonthlyPrice > 0 && (
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      ({subscriptionMonths} thg × {rawMonthlyPrice.toLocaleString('vi-VN')}đ)
-                    </span>
-                  )}
-                </div>
-              </div>
+          {/* Status Selection */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Trạng thái hoạt động
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsActive(true)}
+                className={`p-2.5 rounded-2xl border text-left transition-all flex items-center justify-center gap-2 ${
+                  isActive
+                    ? 'border-emerald-500/80 bg-emerald-500/10 text-emerald-400 font-bold'
+                    : 'border-slate-800 bg-slate-800/50 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserCheck className="w-4 h-4" />
+                <span className="text-xs">Đang hoạt động</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isSelf}
+                onClick={() => setIsActive(false)}
+                title={isSelf ? 'Bạn không thể tự khóa tài khoản của chính mình' : undefined}
+                className={`p-2.5 rounded-2xl border text-left transition-all flex items-center justify-center gap-2 ${
+                  isSelf ? 'opacity-50 cursor-not-allowed' : ''
+                } ${
+                  !isActive
+                    ? 'border-rose-500/80 bg-rose-500/10 text-rose-400 font-bold'
+                    : 'border-slate-800 bg-slate-800/50 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserX className="w-4 h-4" />
+                <span className="text-xs">Đã khóa</span>
+              </button>
             </div>
           </div>
 
@@ -344,7 +430,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               ) : (
                 <CheckCircle2 className="w-4 h-4" />
               )}
-              <span>{loading ? 'Đang tạo...' : 'Tạo Tài Khoản'}</span>
+              <span>{loading ? 'Đang lưu...' : 'Lưu Thay Đổi'}</span>
             </button>
           </div>
         </form>

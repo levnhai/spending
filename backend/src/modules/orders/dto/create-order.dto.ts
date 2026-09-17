@@ -58,10 +58,40 @@ export class OrderCustomerDto {
   @IsEnum(PaymentStatus)
   paymentStatus?: PaymentStatus;
 
+  @ApiPropertyOptional({ example: 30000, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  shippingFee?: number;
+
+  @ApiPropertyOptional({ example: 250000, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  costPrice?: number;
+
   @ApiPropertyOptional({ example: 'Giao hàng trước 17h' })
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({ example: 'Size M' })
+  @IsOptional()
+  @IsString()
+  size?: string;
+
+  @ApiPropertyOptional({ example: 'Màu Đen' })
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @ApiPropertyOptional({ example: 'Số 123 Đường Cầu Giấy, Hà Nội' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ example: 'https://images.unsplash.com/photo-1555041469' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }
 
 export class CreateOrderDto {
@@ -74,6 +104,16 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty({ message: 'Tên đơn hàng không được để trống' })
   title: string;
+
+  @ApiPropertyOptional({ example: 'Size L' })
+  @IsOptional()
+  @IsString()
+  size?: string;
+
+  @ApiPropertyOptional({ example: 'Màu Trắng' })
+  @IsOptional()
+  @IsString()
+  color?: string;
 
   @ApiPropertyOptional({ example: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc' })
   @IsOptional()
@@ -126,4 +166,34 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({ example: 'Nguyễn Văn A' })
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @ApiPropertyOptional({ example: '0912345678' })
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Số 123 Cầu Giấy, Hà Nội' })
+  @IsOptional()
+  @IsString()
+  customerAddress?: string;
+
+  @ApiPropertyOptional({ example: 'Số 123 Cầu Giấy, Hà Nội' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ example: 'https://facebook.com/nam.nguyen' })
+  @IsOptional()
+  @IsString()
+  customerFacebookUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://facebook.com/nam.nguyen' })
+  @IsOptional()
+  @IsString()
+  facebookUrl?: string;
 }

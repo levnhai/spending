@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Receipt, Plus, CalendarDays, PieChart, ShoppingBag, Users } from 'lucide-react';
+import { LayoutDashboard, Receipt, Plus, CalendarDays, PieChart, ShoppingBag, Users, Shield } from 'lucide-react';
 import { useUserStore } from '@/entities/user/useUserStore';
 
 interface BottomNavProps {
@@ -14,6 +14,55 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickAdd }) => {
   const pathname = usePathname();
   const { user, role } = useUserStore();
   const userRole = role || user?.role || 'PERSONAL';
+
+  // Menu cho chế độ QUẢN TRỊ VIÊN (ADMIN)
+  if (userRole === 'ADMIN') {
+    const isAdmin = pathname === '/admin';
+    const isDashboard = pathname === '/dashboard';
+    const isCustomers = pathname === '/customers';
+    const isSettings = pathname === '/settings';
+
+    return (
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around px-4 z-40">
+        <Link
+          href="/dashboard"
+          prefetch={true}
+          className={`flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium transition-colors ${
+            isDashboard
+              ? 'text-purple-400 font-bold'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
+          <span>Tổng quan</span>
+        </Link>
+        <Link
+          href="/admin"
+          prefetch={true}
+          className={`flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium transition-colors ${
+            isAdmin
+              ? 'text-purple-400 font-bold'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Users className="w-5 h-5 mb-0.5" />
+          <span>Người dùng</span>
+        </Link>
+        <Link
+          href="/customers"
+          prefetch={true}
+          className={`flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium transition-colors ${
+            isCustomers
+              ? 'text-purple-400 font-bold'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Users className="w-5 h-5 mb-0.5" />
+          <span>Khách hàng</span>
+        </Link>
+      </div>
+    );
+  }
 
   // Menu cho chế độ BÁN HÀNG (SALES): Dashboard, (+) Thêm Đơn, Đơn Hàng
   if (userRole === 'SALES') {
