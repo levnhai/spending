@@ -335,8 +335,103 @@ export class OrdersService implements OnApplicationBootstrap {
           this.logger.log(`✅ Đã tải thành công ${cloudMigratedCount} đơn hàng có ảnh local lên Cloudinary!`);
         }
       }
+
+      // 3. Tự động đồng bộ các đơn hàng đã THÀNH CÔNG (COMPLETED) -> coi như tiền đã thu đủ
+      const completedOrders = await this.orderModel
+        .find({
+          $or: [
+            { status: OrderStatus.COMPLETED },
+            { 'customers.status': OrderStatus.COMPLETED },
+          ],
+        })
+        .exec();
+
+      if (completedOrders.length > 0) {
+        const affectedCustomersMap = new Map<string, { userId: string; name?: string; phone?: string; facebookUrl?: string }>();
+        let updatedCount = 0;
+
+        for (const order of completedOrders) {
+          let isModified = false;
+          const isOrderCompleted = order.status === OrderStatus.COMPLETED;
+
+          if (isOrderCompleted) {
+            if (order.paidAmount !== order.totalAmount) {
+              order.paidAmount = order.totalAmount || 0;
+              isModified = true;
+            }
+            if (order.paymentStatus !== PaymentStatus.PAID) {
+              order.paymentStatus = PaymentStatus.PAID;
+              isModified = true;
+            }
+          }
+
+          if (order.customers && order.customers.length > 0) {
+            for (const cust of order.customers) {
+              if (isOrderCompleted || cust.status === OrderStatus.COMPLETED) {
+                if (cust.paidAmount !== cust.amount) {
+                  cust.paidAmount = cust.amount || 0;
+                  isModified = true;
+                }
+                if (cust.paymentStatus !== PaymentStatus.PAID) {
+                  cust.paymentStatus = PaymentStatus.PAID;
+                  isModified = true;
+                }
+                if (isOrderCompleted && cust.status !== OrderStatus.COMPLETED) {
+                  cust.status = OrderStatus.COMPLETED;
+                  isModified = true;
+                }
+              }
+            }
+
+            if (!isOrderCompleted) {
+              const calcPaid = order.customers.reduce((sum, c) => sum + (c.paidAmount || 0), 0);
+              if (order.paidAmount !== calcPaid) {
+                order.paidAmount = calcPaid;
+                isModified = true;
+              }
+              if (order.paidAmount >= (order.totalAmount || 0) && (order.totalAmount || 0) > 0) {
+                order.paymentStatus = PaymentStatus.PAID;
+              }
+            }
+          }
+
+          if (isModified) {
+            await order.save();
+            updatedCount++;
+          }
+
+          const uId = order.userId ? order.userId.toString() : '';
+          if (uId) {
+            if (order.customerName) {
+              const key = `${uId}_${order.customerName}_${order.customerPhone || ''}`;
+              affectedCustomersMap.set(key, { userId: uId, name: order.customerName, phone: order.customerPhone, facebookUrl: order.customerFacebookUrl });
+            }
+            (order.customers || []).forEach((c) => {
+              if (c.name) {
+                const key = `${uId}_${c.name}_${c.phone || ''}`;
+                affectedCustomersMap.set(key, { userId: uId, name: c.name, phone: c.phone, facebookUrl: c.facebookUrl });
+              }
+            });
+          }
+        }
+
+        const userGroupedCustomers = new Map<string, Array<{ name?: string; phone?: string; facebookUrl?: string }>>();
+        for (const cust of affectedCustomersMap.values()) {
+          const list = userGroupedCustomers.get(cust.userId) || [];
+          list.push({ name: cust.name, phone: cust.phone, facebookUrl: cust.facebookUrl });
+          userGroupedCustomers.set(cust.userId, list);
+        }
+
+        for (const [userId, custList] of userGroupedCustomers.entries()) {
+          await this.syncCustomersFromOrderData(userId, custList);
+        }
+
+        if (updatedCount > 0) {
+          this.logger.log(`✅ Đã cập nhật tiền thu đủ cho ${updatedCount} đơn hàng thành công và đồng bộ lại công nợ khách hàng!`);
+        }
+      }
     } catch (err) {
-      this.logger.warn(`Lỗi khi quét đồng bộ ảnh: ${err.message}`);
+      this.logger.warn(`Lỗi khi quét đồng bộ khởi động: ${err.message}`);
     }
   }
 
@@ -633,8 +728,11 @@ export class OrdersService implements OnApplicationBootstrap {
               let t = 0;
               let p = 0;
               for (const mc of matchedSub) {
-                t += mc.amount || 0;
-                p += mc.paidAmount || 0;
+                const isSubCompleted = mc.status === OrderStatus.COMPLETED || ord.status === OrderStatus.COMPLETED;
+                const amt = mc.amount || 0;
+                const paid = isSubCompleted ? amt : (mc.paidAmount || 0);
+                t += amt;
+                p += paid;
               }
               totalSpent += t;
               paidAmount += p;
@@ -648,8 +746,9 @@ export class OrdersService implements OnApplicationBootstrap {
                 (custPhoneNorm && ordCustPhone && ordCustPhone === custPhoneNorm);
 
               if (isRoot || (!ord.customers || ord.customers.length === 0)) {
+                const isOrdCompleted = ord.status === OrderStatus.COMPLETED;
                 const ot = ord.totalAmount || 0;
-                const op = ord.paidAmount || 0;
+                const op = isOrdCompleted ? ot : (ord.paidAmount || 0);
                 totalSpent += ot;
                 paidAmount += op;
                 debtAmount += Math.max(0, ot - op);
@@ -681,15 +780,20 @@ export class OrdersService implements OnApplicationBootstrap {
         ? dto.orderCode.trim()
         : `DH-${String(count + 1).padStart(4, '0')}`;
 
+    const isOrderCompleted = dto.status === OrderStatus.COMPLETED;
+
     const customers = await Promise.all(
       (dto.customers || []).map(async (c) => {
+        const isCustCompleted = isOrderCompleted || c.status === OrderStatus.COMPLETED;
         const amount = c.amount || 0;
-        const paidAmount = c.paidAmount || 0;
-        let paymentStatus = c.paymentStatus || PaymentStatus.UNPAID;
-        if (paidAmount >= amount && amount > 0) {
-          paymentStatus = PaymentStatus.PAID;
-        } else if (paidAmount > 0 && paidAmount < amount) {
-          paymentStatus = PaymentStatus.PARTIAL;
+        const paidAmount = isCustCompleted ? amount : (c.paidAmount || 0);
+        let paymentStatus = isCustCompleted ? PaymentStatus.PAID : (c.paymentStatus || PaymentStatus.UNPAID);
+        if (!isCustCompleted) {
+          if (paidAmount >= amount && amount > 0) {
+            paymentStatus = PaymentStatus.PAID;
+          } else if (paidAmount > 0 && paidAmount < amount) {
+            paymentStatus = PaymentStatus.PARTIAL;
+          }
         }
 
         return {
@@ -701,7 +805,7 @@ export class OrdersService implements OnApplicationBootstrap {
           amount,
           paidAmount,
           orderDate: c.orderDate ? new Date(c.orderDate) : new Date(),
-          status: c.status || OrderStatus.ORDERED,
+          status: isCustCompleted ? OrderStatus.COMPLETED : (c.status || OrderStatus.ORDERED),
           paymentStatus,
           note: c.note || '',
           size: c.size || '',
@@ -715,13 +819,15 @@ export class OrdersService implements OnApplicationBootstrap {
     const calculatedPaid = customers.reduce((sum, c) => sum + (c.paidAmount || 0), 0);
 
     const totalAmount = dto.totalAmount !== undefined && dto.totalAmount > 0 ? dto.totalAmount : calculatedTotal;
-    const paidAmount = dto.paidAmount !== undefined && dto.paidAmount > 0 ? dto.paidAmount : calculatedPaid;
+    const paidAmount = isOrderCompleted ? totalAmount : (dto.paidAmount !== undefined && dto.paidAmount > 0 ? dto.paidAmount : calculatedPaid);
 
-    let orderPaymentStatus = PaymentStatus.UNPAID;
-    if (paidAmount >= totalAmount && totalAmount > 0) {
-      orderPaymentStatus = PaymentStatus.PAID;
-    } else if (paidAmount > 0) {
-      orderPaymentStatus = PaymentStatus.PARTIAL;
+    let orderPaymentStatus = isOrderCompleted ? PaymentStatus.PAID : PaymentStatus.UNPAID;
+    if (!isOrderCompleted) {
+      if (paidAmount >= totalAmount && totalAmount > 0) {
+        orderPaymentStatus = PaymentStatus.PAID;
+      } else if (paidAmount > 0) {
+        orderPaymentStatus = PaymentStatus.PARTIAL;
+      }
     }
 
     const primaryCust = customers[0];
@@ -780,16 +886,26 @@ export class OrdersService implements OnApplicationBootstrap {
     if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
     if (dto.shippingFee !== undefined) updateData.shippingFee = dto.shippingFee;
 
+    const isOrderCompleted = dto.status === OrderStatus.COMPLETED;
+
     if (dto.customers && dto.customers.length > 0) {
-      updateData.customers = dto.customers.map((c) => {
+      updateData.customers = dto.customers.map((c, idx) => {
+        const isCustCompleted = isOrderCompleted || c.status === OrderStatus.COMPLETED;
         const amount = c.amount || 0;
-        const paidAmount = c.paidAmount || 0;
-        let paymentStatus = c.paymentStatus || PaymentStatus.UNPAID;
-        if (paidAmount >= amount && amount > 0) {
-          paymentStatus = PaymentStatus.PAID;
-        } else if (paidAmount > 0 && paidAmount < amount) {
-          paymentStatus = PaymentStatus.PARTIAL;
+        const paidAmount = isCustCompleted ? amount : (c.paidAmount || 0);
+        let paymentStatus = isCustCompleted ? PaymentStatus.PAID : (c.paymentStatus || PaymentStatus.UNPAID);
+        if (!isCustCompleted) {
+          if (paidAmount >= amount && amount > 0) {
+            paymentStatus = PaymentStatus.PAID;
+          } else if (paidAmount > 0 && paidAmount < amount) {
+            paymentStatus = PaymentStatus.PARTIAL;
+          }
         }
+
+        const existingCust = (existingOrder?.customers || [])[idx] || (existingOrder?.customers || []).find((ec) => ec.name === c.name);
+        const orderDate = c.orderDate
+          ? new Date(c.orderDate)
+          : (existingCust?.orderDate || existingOrder?.orderDate || new Date());
 
         return {
           name: c.name,
@@ -798,8 +914,8 @@ export class OrdersService implements OnApplicationBootstrap {
           quantity: c.quantity && Number(c.quantity) > 0 ? Number(c.quantity) : 1,
           amount,
           paidAmount,
-          orderDate: c.orderDate ? new Date(c.orderDate) : new Date(),
-          status: c.status || OrderStatus.ORDERED,
+          orderDate,
+          status: isCustCompleted ? OrderStatus.COMPLETED : (c.status || OrderStatus.ORDERED),
           paymentStatus,
           note: c.note || '',
           size: c.size || '',
@@ -810,9 +926,9 @@ export class OrdersService implements OnApplicationBootstrap {
       const calculatedPaid = updateData.customers.reduce((sum: number, c: any) => sum + (c.paidAmount || 0), 0);
 
       updateData.totalAmount = dto.totalAmount !== undefined && dto.totalAmount > 0 ? dto.totalAmount : calculatedTotal;
-      updateData.paidAmount = dto.paidAmount !== undefined && dto.paidAmount > 0 ? dto.paidAmount : calculatedPaid;
+      updateData.paidAmount = isOrderCompleted ? updateData.totalAmount : (dto.paidAmount !== undefined && dto.paidAmount > 0 ? dto.paidAmount : calculatedPaid);
 
-      if (updateData.paidAmount >= updateData.totalAmount && updateData.totalAmount > 0) {
+      if (isOrderCompleted || (updateData.paidAmount >= updateData.totalAmount && updateData.totalAmount > 0)) {
         updateData.paymentStatus = PaymentStatus.PAID;
       } else if (updateData.paidAmount > 0) {
         updateData.paymentStatus = PaymentStatus.PARTIAL;
@@ -824,8 +940,25 @@ export class OrdersService implements OnApplicationBootstrap {
       if (primaryCust) {
         updateData.customerName = primaryCust.name;
         updateData.customerPhone = primaryCust.phone || '';
-        updateData.orderDate = primaryCust.orderDate;
+        updateData.orderDate = dto.orderDate
+          ? new Date(dto.orderDate)
+          : (primaryCust.orderDate || existingOrder?.orderDate);
         updateData.status = primaryCust.status;
+      }
+    } else {
+      if (dto.orderDate) {
+        updateData.orderDate = new Date(dto.orderDate);
+      } else if (existingOrder?.orderDate) {
+        updateData.orderDate = existingOrder.orderDate;
+      }
+
+      if (isOrderCompleted) {
+        if (updateData.totalAmount !== undefined) {
+          updateData.paidAmount = updateData.totalAmount;
+        } else if (existingOrder) {
+          updateData.paidAmount = existingOrder.totalAmount || 0;
+        }
+        updateData.paymentStatus = PaymentStatus.PAID;
       }
     }
 
@@ -866,20 +999,27 @@ export class OrdersService implements OnApplicationBootstrap {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
+    const isCompleted = status === OrderStatus.COMPLETED;
+
     const updatedCustomers = (order.customers || []).map((c: any) => ({
       name: c.name,
       phone: c.phone,
       facebookUrl: c.facebookUrl || '',
       amount: c.amount,
-      paidAmount: c.paidAmount || 0,
-      orderDate: c.orderDate,
+      paidAmount: isCompleted ? (c.amount || 0) : (c.paidAmount || 0),
+      orderDate: c.orderDate || order.orderDate || (order as any).createdAt || new Date(),
       status,
-      paymentStatus: c.paymentStatus,
+      paymentStatus: isCompleted ? PaymentStatus.PAID : c.paymentStatus,
       note: c.note,
     }));
 
     order.status = status;
     order.customers = updatedCustomers as any;
+    if (isCompleted) {
+      order.paidAmount = order.totalAmount || 0;
+      order.paymentStatus = PaymentStatus.PAID;
+    }
+
     const saved = await order.save();
     await this.cacheService.invalidateUser(userId, ['orders', 'analytics']);
 

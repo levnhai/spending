@@ -115,10 +115,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           },
         ];
 
+  const isCompleted = order.status === "COMPLETED";
   const totalQuantity = custList.reduce((sum, c) => sum + (c.quantity || 1), 0);
   const totalAmount = Number(order.totalAmount) || 0;
-  const paidAmount = Number(order.paidAmount) || 0;
-  const remainingAmount = Math.max(0, totalAmount - paidAmount);
+  const paidAmount = isCompleted ? totalAmount : (Number(order.paidAmount) || 0);
+  const remainingAmount = isCompleted ? 0 : Math.max(0, totalAmount - paidAmount);
   const costPrice = Number(order.costPrice) || 0;
   const shippingFee = Number(order.shippingFee) || 0;
   

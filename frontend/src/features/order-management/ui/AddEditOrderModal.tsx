@@ -161,6 +161,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   // Chi phí
   const [costPriceStr, setCostPriceStr] = useState("");
   const [shippingFeeStr, setShippingFeeStr] = useState("");
+  const [orderDateStr, setOrderDateStr] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -248,6 +249,16 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       );
 
       const custs = orderToEdit.customers || [];
+      const origDate =
+        orderToEdit.orderDate ||
+        custs[0]?.orderDate ||
+        (orderToEdit as any).createdAt;
+      setOrderDateStr(
+        origDate
+          ? new Date(origDate).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0],
+      );
+
       const uniqueNames = new Set(
         custs.map((c) => c.name?.trim()).filter(Boolean),
       );
@@ -373,6 +384,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       setImageUrl("");
       setCostPriceStr("");
       setShippingFeeStr("");
+      setOrderDateStr(new Date().toISOString().split("T")[0]);
       setSingleCustName("");
       setSingleCustPhone("");
       setSingleCustFacebook("");
@@ -688,6 +700,12 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     }
 
     try {
+      const finalDateISO = orderDateStr
+        ? new Date(orderDateStr).toISOString()
+        : isEditing && orderToEdit?.orderDate
+          ? new Date(orderToEdit.orderDate).toISOString()
+          : new Date().toISOString();
+
       if (isEditing && orderToEdit) {
         // Khi chỉnh sửa 1 đơn hàng có sẵn
         let updatePayload: CreateOrderPayload;
@@ -698,6 +716,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
           let pStatus: PaymentStatusType = "UNPAID";
           if (itemPaid >= itemAmount && itemAmount > 0) pStatus = "PAID";
           else if (itemPaid > 0) pStatus = "PARTIAL";
+
+          const isOrderCompleted = orderToEdit.status === "COMPLETED";
 
           updatePayload = {
             title: title.trim(),
@@ -714,9 +734,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             customerFacebookUrl: singleCustFacebook.trim() || undefined,
             facebookUrl: singleCustFacebook.trim() || undefined,
             totalAmount: itemAmount,
-            paidAmount: itemPaid,
-            paymentStatus: pStatus,
-            status: "ORDERED",
+            paidAmount: isOrderCompleted ? itemAmount : itemPaid,
+            paymentStatus: isOrderCompleted ? "PAID" : pStatus,
+            status: orderToEdit.status || "ORDERED",
+            orderDate: finalDateISO,
             note: singleItemNote.trim() || undefined,
             customers: [
               {
@@ -729,10 +750,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 imageUrl: imageUrl.trim() || undefined,
                 quantity: itemQty,
                 amount: itemAmount,
-                paidAmount: itemPaid,
-                paymentStatus: pStatus,
-                status: "ORDERED",
-                orderDate: new Date().toISOString(),
+                paidAmount: orderToEdit.status === "COMPLETED" ? itemAmount : itemPaid,
+                paymentStatus: orderToEdit.status === "COMPLETED" ? "PAID" : pStatus,
+                status: orderToEdit.status || "ORDERED",
+                orderDate: finalDateISO,
                 note: singleItemNote.trim() || undefined,
               },
             ],
@@ -759,6 +780,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
           if (totalPaid >= totalAmt && totalAmt > 0) pStatus = "PAID";
           else if (totalPaid > 0) pStatus = "PARTIAL";
 
+          const isOrderCompleted = orderToEdit.status === "COMPLETED";
+
           updatePayload = {
             title: validItems[0]?.name || title.trim(),
             orderCode: orderCode.trim() || undefined,
@@ -777,32 +800,36 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             customerFacebookUrl: singleCustFacebook.trim() || undefined,
             facebookUrl: singleCustFacebook.trim() || undefined,
             totalAmount: totalAmt,
-            paidAmount: totalPaid,
-            paymentStatus: pStatus,
-            status: "ORDERED",
-            customers: validItems.map((it) => ({
-              name: it.name.trim(),
-              phone: singleCustPhone.trim() || undefined,
-              facebookUrl: singleCustFacebook.trim() || undefined,
-              address: singleCustAddress.trim() || undefined,
-              size: it.size.trim() || undefined,
-              color: it.color.trim() || undefined,
-              imageUrl: it.imageUrl?.trim() || undefined,
-              quantity: Math.max(1, parseInt(it.quantityStr) || 1),
-              amount: parseFormattedNumber(it.amountStr),
-              paidAmount: parseFormattedNumber(it.paidAmountStr),
-              paymentStatus:
-                parseFormattedNumber(it.paidAmountStr) >=
-                  parseFormattedNumber(it.amountStr) &&
-                parseFormattedNumber(it.amountStr) > 0
+            paidAmount: isOrderCompleted ? totalAmt : totalPaid,
+            paymentStatus: isOrderCompleted ? "PAID" : pStatus,
+            status: orderToEdit.status || "ORDERED",
+            orderDate: finalDateISO,
+            customers: validItems.map((it) => {
+              const itAmt = parseFormattedNumber(it.amountStr);
+              const itPaid = parseFormattedNumber(it.paidAmountStr);
+              return {
+                name: it.name.trim(),
+                phone: singleCustPhone.trim() || undefined,
+                facebookUrl: singleCustFacebook.trim() || undefined,
+                address: singleCustAddress.trim() || undefined,
+                size: it.size.trim() || undefined,
+                color: it.color.trim() || undefined,
+                imageUrl: it.imageUrl?.trim() || undefined,
+                quantity: Math.max(1, parseInt(it.quantityStr) || 1),
+                amount: itAmt,
+                paidAmount: isOrderCompleted ? itAmt : itPaid,
+                paymentStatus: isOrderCompleted
                   ? "PAID"
-                  : parseFormattedNumber(it.paidAmountStr) > 0
-                    ? "PARTIAL"
-                    : "UNPAID",
-              status: "ORDERED",
-              orderDate: new Date().toISOString(),
-              note: it.note.trim() || undefined,
-            })),
+                  : itPaid >= itAmt && itAmt > 0
+                    ? "PAID"
+                    : itPaid > 0
+                      ? "PARTIAL"
+                      : "UNPAID",
+                status: orderToEdit.status || "ORDERED",
+                orderDate: finalDateISO,
+                note: it.note.trim() || undefined,
+              };
+            }),
           };
         } else {
           updatePayload = {
@@ -815,6 +842,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             shippingFee: shippingFee,
             totalAmount: calculatedTotalAmount,
             paidAmount: calculatedPaidAmount,
+            status: orderToEdit.status || "ORDERED",
+            orderDate: finalDateISO,
             customers: groupCustomers.map((c) => ({
               ...c,
               size: c.size?.trim() || size.trim() || undefined,
@@ -822,7 +851,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               imageUrl: c.imageUrl?.trim() || undefined,
               orderDate: c.orderDate
                 ? new Date(c.orderDate).toISOString()
-                : new Date().toISOString(),
+                : finalDateISO,
             })),
           };
         }
@@ -864,6 +893,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               paidAmount: itPaid,
               paymentStatus: pStatus,
               status: "ORDERED",
+              orderDate: finalDateISO,
               note:
                 it.note.trim() ||
                 (singleCustAddress ? `Đ/C: ${singleCustAddress}` : undefined),
@@ -881,7 +911,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   paidAmount: itPaid,
                   paymentStatus: pStatus,
                   status: "ORDERED",
-                  orderDate: new Date().toISOString(),
+                  orderDate: finalDateISO,
                   note:
                     it.note.trim() ||
                     (singleCustAddress
@@ -908,6 +938,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               if (cPaid >= cAmt && cAmt > 0) pStatus = "PAID";
               else if (cPaid > 0) pStatus = "PARTIAL";
 
+              const custDate = c.orderDate
+                ? new Date(c.orderDate).toISOString()
+                : finalDateISO;
+
               return {
                 title: title.trim(),
                 orderCode: orderCode.trim()
@@ -930,6 +964,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 paidAmount: cPaid,
                 paymentStatus: pStatus,
                 status: c.status || "ORDERED",
+                orderDate: custDate,
                 note: c.note?.trim() || undefined,
                 customers: [
                   {
@@ -939,9 +974,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     size: c.size?.trim() || undefined,
                     color: c.color?.trim() || undefined,
                     imageUrl: c.imageUrl?.trim() || undefined,
-                    orderDate: c.orderDate
-                      ? new Date(c.orderDate).toISOString()
-                      : new Date().toISOString(),
+                    orderDate: custDate,
                   },
                 ],
               };
@@ -977,6 +1010,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             paidAmount: itemPaid,
             paymentStatus: pStatus,
             status: "ORDERED",
+            orderDate: finalDateISO,
             note: singleItemNote.trim() || undefined,
             customers: [
               {
@@ -992,7 +1026,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 paidAmount: itemPaid,
                 paymentStatus: pStatus,
                 status: "ORDERED",
-                orderDate: new Date().toISOString(),
+                orderDate: finalDateISO,
                 note:
                   singleItemNote.trim() ||
                   (singleCustAddress ? `Đ/C: ${singleCustAddress}` : undefined),

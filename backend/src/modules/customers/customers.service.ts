@@ -202,8 +202,11 @@ export class CustomersService {
         let orderCustTotal = 0;
         let orderCustPaid = 0;
         for (const mc of matchedCustomers) {
-          orderCustTotal += mc.amount || 0;
-          orderCustPaid += mc.paidAmount || 0;
+          const isSubCompleted = mc.status === OrderStatus.COMPLETED || order.status === OrderStatus.COMPLETED;
+          const amt = mc.amount || 0;
+          const paid = isSubCompleted ? amt : (mc.paidAmount || 0);
+          orderCustTotal += amt;
+          orderCustPaid += paid;
         }
         totalSpent += orderCustTotal;
         paidAmount += orderCustPaid;
@@ -218,8 +221,9 @@ export class CustomersService {
           (custPhoneNorm && orderCustPhone && orderCustPhone === custPhoneNorm);
 
         if (isRootMatch || (!order.customers || order.customers.length === 0)) {
+          const isOrdCompleted = order.status === OrderStatus.COMPLETED;
           const orderTotal = order.totalAmount || 0;
-          const orderPaid = order.paidAmount || 0;
+          const orderPaid = isOrdCompleted ? orderTotal : (order.paidAmount || 0);
           totalSpent += orderTotal;
           paidAmount += orderPaid;
           debtAmount += Math.max(0, orderTotal - orderPaid);

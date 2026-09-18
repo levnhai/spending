@@ -118,11 +118,32 @@ export const DashboardPageView: React.FC = () => {
 
   const handleStatusChanged = async (orderId: string, newStatus: OrderStatusType) => {
     const prevOrders = [...recentOrders];
-    const updated = recentOrders.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o));
+    const isCompleted = newStatus === 'COMPLETED';
+    const updated = recentOrders.map((o) => {
+      if (o._id === orderId) {
+        const tot = o.totalAmount || 0;
+        return {
+          ...o,
+          status: newStatus,
+          paidAmount: isCompleted ? tot : o.paidAmount,
+          paymentStatus: isCompleted ? 'PAID' : o.paymentStatus,
+          customers: (o.customers || []).map((c) => ({
+            ...c,
+            status: newStatus,
+            paidAmount: isCompleted ? (c.amount || 0) : c.paidAmount,
+            paymentStatus: isCompleted ? 'PAID' : c.paymentStatus,
+          })),
+        };
+      }
+      return o;
+    });
     setRecentOrders(updated);
 
     try {
-      await orderApi.updateStatus(orderId, newStatus);
+      const saved = await orderApi.updateStatus(orderId, newStatus);
+      if (saved) {
+        setRecentOrders((prev) => prev.map((o) => (o._id === orderId ? saved : o)));
+      }
     } catch (err) {
       console.error('Failed to update status in dashboard', err);
       setRecentOrders(prevOrders);

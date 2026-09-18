@@ -149,14 +149,35 @@ export const OrdersPageView: React.FC = () => {
   // Optimistic Update khi đổi trạng thái đơn
   const handleStatusChanged = async (orderId: string, newStatus: OrderStatusType) => {
     const previousOrders = [...orders];
+    const isCompleted = newStatus === 'COMPLETED';
 
     // Đổi ngay trên giao diện trong 1ms
     setOrders((prev) =>
-      prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)),
+      prev.map((o) => {
+        if (o._id === orderId) {
+          const tot = o.totalAmount || 0;
+          return {
+            ...o,
+            status: newStatus,
+            paidAmount: isCompleted ? tot : o.paidAmount,
+            paymentStatus: isCompleted ? 'PAID' : o.paymentStatus,
+            customers: (o.customers || []).map((c) => ({
+              ...c,
+              status: newStatus,
+              paidAmount: isCompleted ? (c.amount || 0) : c.paidAmount,
+              paymentStatus: isCompleted ? 'PAID' : c.paymentStatus,
+            })),
+          };
+        }
+        return o;
+      }),
     );
 
     try {
-      await orderApi.updateStatus(orderId, newStatus);
+      const updated = await orderApi.updateStatus(orderId, newStatus);
+      if (updated) {
+        setOrders((prev) => prev.map((o) => (o._id === orderId ? updated : o)));
+      }
       fetchStats();
     } catch (err) {
       console.error('Failed to update status, rolling back', err);

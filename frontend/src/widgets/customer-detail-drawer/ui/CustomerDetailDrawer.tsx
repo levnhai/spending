@@ -419,19 +419,28 @@ export const CustomerDetailDrawer: React.FC<CustomerDetailDrawerProps> = ({
                             </span>
                           </div>
 
-                          <div className="text-right shrink-0">
-                            <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                              {formatVND(order.totalAmount)}
-                            </div>
-                            <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                              Đã thu: {formatVND(order.paidAmount || 0)}
-                            </div>
-                            {(order.totalAmount || 0) > (order.paidAmount || 0) && (
-                              <div className="text-[10px] font-bold text-rose-500">
-                                Nợ: {formatVND((order.totalAmount || 0) - (order.paidAmount || 0))}
+                          {(() => {
+                            const isCompleted = order.status === "COMPLETED";
+                            const tot = order.totalAmount || 0;
+                            const paid = isCompleted ? tot : (order.paidAmount || 0);
+                            const rem = isCompleted ? 0 : Math.max(0, tot - paid);
+
+                            return (
+                              <div className="text-right shrink-0">
+                                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                  {formatVND(tot)}
+                                </div>
+                                <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                  Đã thu: {formatVND(paid)}
+                                </div>
+                                {rem > 0 && (
+                                  <div className="text-[10px] font-bold text-rose-500">
+                                    Nợ: {formatVND(rem)}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}

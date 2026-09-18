@@ -358,9 +358,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 const mainCustomer = custList[0];
                 const extraCount = custList.length - 1;
 
+                const isCompleted = order.status === "COMPLETED";
                 const orderTotal = Number(order.totalAmount) || 0;
-                const orderPaid = Number(order.paidAmount) || 0;
-                const orderRemaining = Math.max(0, orderTotal - orderPaid);
+                const orderPaid = isCompleted ? orderTotal : (Number(order.paidAmount) || 0);
+                const orderRemaining = isCompleted ? 0 : Math.max(0, orderTotal - orderPaid);
                 const isSelected = selectedIds.includes(order._id);
 
                 return (
@@ -602,9 +603,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({
             (sum, c) => sum + (Number(c.quantity) || 1),
             0,
           );
+          const isCompleted = order.status === "COMPLETED";
           const orderTotal = Number(order.totalAmount) || 0;
-          const orderPaid = Number(order.paidAmount) || 0;
-          const orderRemaining = Math.max(0, orderTotal - orderPaid);
+          const orderPaid = isCompleted ? orderTotal : (Number(order.paidAmount) || 0);
+          const orderRemaining = isCompleted ? 0 : Math.max(0, orderTotal - orderPaid);
 
           const isSelected = selectedIds.includes(order._id);
 
@@ -850,9 +852,16 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 const conf =
                   ORDER_STATUS_CONFIG[cust.status || "ORDERED"] ||
                   ORDER_STATUS_CONFIG.ORDERED;
+                const isCustCompleted =
+                  cust.status === "COMPLETED" ||
+                  activeCustomersModal.status === "COMPLETED";
                 const cAmount = Number(cust.amount) || 0;
-                const cPaid = Number(cust.paidAmount) || 0;
-                const cRemaining = Math.max(0, cAmount - cPaid);
+                const cPaid = isCustCompleted
+                  ? cAmount
+                  : Number(cust.paidAmount) || 0;
+                const cRemaining = isCustCompleted
+                  ? 0
+                  : Math.max(0, cAmount - cPaid);
 
                 return (
                   <div
@@ -984,36 +993,36 @@ export const OrderTable: React.FC<OrderTableProps> = ({
             </div>
 
             {/* Total Footer */}
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-500">
-                  Tổng đơn ({activeCustomersModal.customers?.length || 1}{" "}
-                  khách):
-                </span>
-                <span className="text-base font-extrabold text-slate-900 dark:text-white ml-2">
-                  {renderAmount(activeCustomersModal.totalAmount || 0)}
-                </span>
-              </div>
+            {(() => {
+              const isModalCompleted = activeCustomersModal.status === "COMPLETED";
+              const modalTotal = Number(activeCustomersModal.totalAmount) || 0;
+              const modalPaid = isModalCompleted ? modalTotal : (Number(activeCustomersModal.paidAmount) || 0);
+              const modalRemaining = isModalCompleted ? 0 : Math.max(0, modalTotal - modalPaid);
 
-              <div className="text-right text-xs">
-                <span className="text-emerald-500 font-bold">
-                  Đã thu: {renderAmount(activeCustomersModal.paidAmount || 0)}
-                </span>
-                {Math.max(
-                  0,
-                  (activeCustomersModal.totalAmount || 0) -
-                    (activeCustomersModal.paidAmount || 0),
-                ) > 0 && (
-                  <span className="text-amber-500 font-bold ml-2">
-                    | Còn nợ:{" "}
-                    {renderAmount(
-                      (activeCustomersModal.totalAmount || 0) -
-                        (activeCustomersModal.paidAmount || 0),
+              return (
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-500">
+                      Tổng đơn ({activeCustomersModal.customers?.length || 1} khách):
+                    </span>
+                    <span className="text-base font-extrabold text-slate-900 dark:text-white ml-2">
+                      {renderAmount(modalTotal)}
+                    </span>
+                  </div>
+
+                  <div className="text-right text-xs">
+                    <span className="text-emerald-500 font-bold">
+                      Đã thu: {renderAmount(modalPaid)}
+                    </span>
+                    {modalRemaining > 0 && (
+                      <span className="text-amber-500 font-bold ml-2">
+                        | Còn nợ: {renderAmount(modalRemaining)}
+                      </span>
                     )}
-                  </span>
-                )}
-              </div>
-            </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
