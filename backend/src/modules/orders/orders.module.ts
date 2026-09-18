@@ -5,9 +5,14 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { UploadModule } from '../upload/upload.module';
 
+import { Customer, CustomerSchema } from '../../schemas/customer.schema';
+
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
+    MongooseModule.forFeature([
+      { name: Order.name, schema: OrderSchema },
+      { name: Customer.name, schema: CustomerSchema },
+    ]),
     UploadModule,
   ],
   controllers: [OrdersController],

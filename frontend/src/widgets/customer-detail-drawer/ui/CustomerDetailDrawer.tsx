@@ -107,14 +107,75 @@ export const CustomerDetailDrawer: React.FC<CustomerDetailDrawerProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   const customer = data?.customer;
   const orders = data?.relatedOrders || [];
+
+  const dynamicStats = React.useMemo(() => {
+    if (!orders || orders.length === 0) {
+      const spent = customer?.totalSpent || 0;
+      const debt = customer?.debtAmount || 0;
+      return {
+        totalSpent: spent,
+        debtAmount: debt,
+        paidAmount: Math.max(0, spent - debt),
+        totalOrders: customer?.totalOrders || 0,
+      };
+    }
+
+    let spent = 0;
+    let paid = 0;
+    let debt = 0;
+    const activeOrders = orders.filter((o) => o.status !== 'CANCELLED');
+
+    const custNameNorm = customer?.name?.trim().toLowerCase();
+    const custPhoneNorm = customer?.phone?.trim();
+    const custFbNorm = customer?.facebookUrl?.trim().toLowerCase();
+
+    for (const order of activeOrders) {
+      const matched = (order.customers || []).filter((c) => {
+        const cn = c.name?.trim().toLowerCase();
+        const cp = c.phone?.trim();
+        const cf = c.facebookUrl?.trim().toLowerCase();
+        return (
+          (custNameNorm && cn === custNameNorm) ||
+          (custPhoneNorm && cp && cp === custPhoneNorm) ||
+          (custFbNorm && cf && cf === custFbNorm)
+        );
+      });
+
+      if (matched.length > 0) {
+        let oCustSpent = 0;
+        let oCustPaid = 0;
+        for (const m of matched) {
+          oCustSpent += m.amount || 0;
+          oCustPaid += m.paidAmount || 0;
+        }
+        spent += oCustSpent;
+        paid += oCustPaid;
+        debt += Math.max(0, oCustSpent - oCustPaid);
+      } else {
+        const orderTotal = order.totalAmount || 0;
+        const orderPaid = order.paidAmount || 0;
+        spent += orderTotal;
+        paid += orderPaid;
+        debt += Math.max(0, orderTotal - orderPaid);
+      }
+    }
+
+    return {
+      totalSpent: spent,
+      paidAmount: paid,
+      debtAmount: debt,
+      totalOrders: activeOrders.length,
+    };
+  }, [orders, customer]);
+
   const groupConf = customer?.group
     ? CUSTOMER_GROUP_CONFIG[customer.group]
     : CUSTOMER_GROUP_CONFIG.RETAIL;
-  const hasDebt = (customer?.debtAmount || 0) > 0;
+  const hasDebt = dynamicStats.debtAmount > 0;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 flex justify-end">
@@ -188,46 +249,46 @@ export const CustomerDetailDrawer: React.FC<CustomerDetailDrawerProps> = ({
             <>
               {/* Thống kê Tài chính nhanh */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                    Tổng Mua Hàng
+                    Tổng Hàng
                   </span>
                   <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
-                    {formatVND(customer.totalSpent || 0)}
+                    {formatVND(dynamicStats.totalSpent)}
                   </div>
                   <span className="text-[11px] text-slate-400 font-medium">
-                    {customer.totalOrders || 0} đơn
+                    {dynamicStats.totalOrders} đơn
                   </span>
                 </div>
 
                 <div
-                  className={`p-3.5 rounded-2xl border ${
+                  className={`p-3.5 rounded-2xl border shadow-sm ${
                     hasDebt
                       ? 'bg-rose-50/70 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20'
                       : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200/60 dark:border-slate-700/60'
                   }`}
                 >
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                    Công Nợ Hiện Tại
+                    Công Nợ
                   </span>
                   <div
                     className={`text-base sm:text-lg font-bold ${
                       hasDebt ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    {formatVND(customer.debtAmount || 0)}
+                    {formatVND(dynamicStats.debtAmount)}
                   </div>
                   <span className="text-[11px] font-medium text-slate-400">
-                    {hasDebt ? 'Chưa thanh toán đủ' : 'Đã thanh toán đủ'}
+                    {hasDebt ? 'Chưa thanh toán' : 'Đã thanh toán đủ'}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
                     Đã Thu Về
                   </span>
                   <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatVND(Math.max(0, (customer.totalSpent || 0) - (customer.debtAmount || 0)))}
+                    {formatVND(dynamicStats.paidAmount)}
                   </div>
                   <span className="text-[11px] text-slate-400 font-medium">Thực nhận</span>
                 </div>

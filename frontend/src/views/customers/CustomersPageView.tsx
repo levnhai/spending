@@ -29,6 +29,7 @@ export const CustomersPageView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -66,6 +67,18 @@ export const CustomersPageView: React.FC = () => {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  const handleSyncAll = async () => {
+    try {
+      setSyncingAll(true);
+      await customerApi.syncAll();
+      await Promise.all([loadData(), loadStats()]);
+    } catch (err) {
+      console.error('Failed to sync all customers', err);
+    } finally {
+      setSyncingAll(false);
+    }
+  };
 
   const handleSaveCustomer = async (payload: CreateCustomerPayload) => {
     if (editingCustomer) {
@@ -134,6 +147,8 @@ export const CustomersPageView: React.FC = () => {
             loadData();
             loadStats();
           }}
+          onSyncAll={handleSyncAll}
+          syncing={syncingAll}
           loading={loading}
         />
 

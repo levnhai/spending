@@ -44,6 +44,12 @@ export class CustomersController {
     return this.customersService.getStats(req.user.userId, isAdmin);
   }
 
+  @Post('sync-all')
+  @ApiOperation({ summary: 'Đồng bộ lại toàn bộ công nợ và doanh số cho tất cả khách hàng' })
+  syncAll(@Request() req: any) {
+    return this.customersService.syncAllStats(req.user.userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Lấy chi tiết khách hàng và lịch sử đơn hàng' })
   findOne(@Request() req: any, @Param('id') id: string) {

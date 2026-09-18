@@ -26,30 +26,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                const storage = localStorage.getItem('user-storage');
-                if (storage) {
-                  const parsed = JSON.parse(storage);
-                  if (parsed?.state?.theme === 'light') {
-                    document.documentElement.classList.remove('dark');
-                  } else {
-                    document.documentElement.classList.add('dark');
-                  }
-                } else {
-                  document.documentElement.classList.add('dark');
-                }
-              } catch (e) {
-                document.documentElement.classList.add('dark');
-              }
-            `,
-          }}
-        />
-      </head>
+    <html lang="vi" className="dark" suppressHydrationWarning>
       <body
         className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-emerald-500 selection:text-white"
         suppressHydrationWarning

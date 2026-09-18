@@ -43,6 +43,11 @@ export const customerApi = {
     return res.data;
   },
 
+  syncAll: async (): Promise<{ updatedCount: number; message: string }> => {
+    const res = await api.post('/customers/sync-all');
+    return res.data;
+  },
+
   delete: async (id: string): Promise<{ message: string }> => {
     const res = await api.delete(`/customers/${id}`);
     return res.data;

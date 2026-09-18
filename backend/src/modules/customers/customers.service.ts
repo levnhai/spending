@@ -122,6 +122,121 @@ export class CustomersService {
     };
   }
 
+  /**
+   * Tạo filter MongoDB để tìm tất cả đơn hàng liên quan đến khách hàng
+   */
+  private buildCustomerOrderFilter(customer: CustomerDocument | Customer, userId: Types.ObjectId | string) {
+    const conditions: any[] = [];
+    const userObjId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+
+    if (customer.name && customer.name.trim()) {
+      const escapedName = customer.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const nameRegex = new RegExp(`^${escapedName}$`, 'i');
+      conditions.push({ 'customers.name': nameRegex });
+      conditions.push({ customerName: nameRegex });
+    }
+
+    if (customer.phone && customer.phone.trim()) {
+      const p = customer.phone.trim();
+      conditions.push({ 'customers.phone': p });
+      conditions.push({ customerPhone: p });
+    }
+
+    if (customer.facebookUrl && customer.facebookUrl.trim()) {
+      const fb = customer.facebookUrl.trim();
+      conditions.push({ 'customers.facebookUrl': fb });
+      conditions.push({ customerFacebookUrl: fb });
+      conditions.push({ facebookUrl: fb });
+    }
+
+    if (conditions.length === 0) {
+      return { _id: null };
+    }
+
+    return {
+      userId: userObjId,
+      status: { $ne: OrderStatus.CANCELLED },
+      $or: conditions,
+    };
+  }
+
+  /**
+   * Tính toán thống kê tài chính (tổng mua, đã trả, nợ, số đơn, ngày mua gần nhất) cho khách hàng từ danh sách đơn hàng
+   */
+  private computeStatsFromOrders(customer: CustomerDocument | Customer, orders: OrderDocument[]) {
+    let totalSpent = 0;
+    let paidAmount = 0;
+    let debtAmount = 0;
+    let totalOrders = 0;
+    let latestOrderDate: Date | null = null;
+
+    const custNameNorm = customer.name?.trim().toLowerCase();
+    const custPhoneNorm = customer.phone?.trim();
+    const custFbNorm = customer.facebookUrl?.trim().toLowerCase();
+
+    for (const order of orders) {
+      if (order.status === OrderStatus.CANCELLED) continue;
+
+      const orderDate = order.orderDate
+        ? new Date(order.orderDate)
+        : new Date((order as any).createdAt || Date.now());
+
+      if (!latestOrderDate || orderDate > latestOrderDate) {
+        latestOrderDate = orderDate;
+      }
+
+      // Kiểm tra trong mảng order.customers
+      const matchedCustomers = (order.customers || []).filter((c) => {
+        const cName = c.name?.trim().toLowerCase();
+        const cPhone = c.phone?.trim();
+        const cFb = c.facebookUrl?.trim().toLowerCase();
+
+        return (
+          (custNameNorm && cName === custNameNorm) ||
+          (custPhoneNorm && cPhone && cPhone === custPhoneNorm) ||
+          (custFbNorm && cFb && cFb === custFbNorm)
+        );
+      });
+
+      if (matchedCustomers.length > 0) {
+        let orderCustTotal = 0;
+        let orderCustPaid = 0;
+        for (const mc of matchedCustomers) {
+          orderCustTotal += mc.amount || 0;
+          orderCustPaid += mc.paidAmount || 0;
+        }
+        totalSpent += orderCustTotal;
+        paidAmount += orderCustPaid;
+        debtAmount += Math.max(0, orderCustTotal - orderCustPaid);
+        totalOrders += 1;
+      } else {
+        // Nếu không có sub-document customers match nhưng đơn hàng được query ra
+        const orderCustName = (order.customerName || '').trim().toLowerCase();
+        const orderCustPhone = (order.customerPhone || '').trim();
+        const isRootMatch =
+          (custNameNorm && orderCustName === custNameNorm) ||
+          (custPhoneNorm && orderCustPhone && orderCustPhone === custPhoneNorm);
+
+        if (isRootMatch || (!order.customers || order.customers.length === 0)) {
+          const orderTotal = order.totalAmount || 0;
+          const orderPaid = order.paidAmount || 0;
+          totalSpent += orderTotal;
+          paidAmount += orderPaid;
+          debtAmount += Math.max(0, orderTotal - orderPaid);
+          totalOrders += 1;
+        }
+      }
+    }
+
+    return {
+      totalSpent,
+      paidAmount,
+      debtAmount,
+      totalOrders,
+      lastOrderDate: latestOrderDate,
+    };
+  }
+
   async findOne(userId: string, id: string, isAdmin = false) {
     const filter: any = { _id: id };
     if (!isAdmin || userId) {
@@ -133,24 +248,36 @@ export class CustomersService {
       throw new NotFoundException('Không tìm thấy thông tin khách hàng');
     }
 
-    // Tìm tất cả đơn hàng liên quan đến khách hàng này theo tên / phone / fb
-    const orderFilter: any = {
-      userId: customer.userId,
-      status: { $ne: OrderStatus.CANCELLED },
-      $or: [
-        { 'customers.name': customer.name },
-        ...(customer.phone ? [{ 'customers.phone': customer.phone }] : []),
-        ...(customer.facebookUrl ? [{ 'customers.facebookUrl': customer.facebookUrl }] : []),
-        { customerName: customer.name },
-        ...(customer.phone ? [{ customerPhone: customer.phone }] : []),
-      ],
-    };
-
+    const orderFilter = this.buildCustomerOrderFilter(customer, customer.userId);
     const relatedOrders = await this.orderModel
       .find(orderFilter)
       .sort({ orderDate: -1, createdAt: -1 })
-      .limit(30)
+      .limit(100)
       .exec();
+
+    // Tự động tính toán lại thống kê thực tế từ các đơn hàng
+    const stats = this.computeStatsFromOrders(customer, relatedOrders);
+
+    // Cập nhật customer document
+    customer.totalSpent = stats.totalSpent;
+    customer.debtAmount = stats.debtAmount;
+    customer.totalOrders = stats.totalOrders;
+    if (stats.lastOrderDate) {
+      customer.lastOrderDate = stats.lastOrderDate;
+    }
+
+    // Lưu ngầm cập nhật DB để các trang khác cũng nhận giá trị chính xác
+    await this.customerModel.updateOne(
+      { _id: customer._id },
+      {
+        $set: {
+          totalSpent: stats.totalSpent,
+          debtAmount: stats.debtAmount,
+          totalOrders: stats.totalOrders,
+          ...(stats.lastOrderDate ? { lastOrderDate: stats.lastOrderDate } : {}),
+        },
+      },
+    );
 
     return {
       customer,
@@ -202,59 +329,50 @@ export class CustomersService {
       throw new NotFoundException('Không tìm thấy khách hàng');
     }
 
-    const orderFilter: any = {
-      userId: new Types.ObjectId(userId),
-      status: { $ne: OrderStatus.CANCELLED },
-      $or: [
-        { 'customers.name': customer.name },
-        ...(customer.phone ? [{ 'customers.phone': customer.phone }] : []),
-        ...(customer.facebookUrl ? [{ 'customers.facebookUrl': customer.facebookUrl }] : []),
-        { customerName: customer.name },
-        ...(customer.phone ? [{ customerPhone: customer.phone }] : []),
-      ],
-    };
-
+    const orderFilter = this.buildCustomerOrderFilter(customer, customer.userId);
     const orders = await this.orderModel.find(orderFilter).exec();
+    const stats = this.computeStatsFromOrders(customer, orders);
 
-    let totalSpent = 0;
-    let debtAmount = 0;
-    let totalOrders = orders.length;
-    let latestOrderDate: Date | null = null;
-
-    for (const order of orders) {
-      const orderDate = order.orderDate ? new Date(order.orderDate) : null;
-      if (orderDate && (!latestOrderDate || orderDate > latestOrderDate)) {
-        latestOrderDate = orderDate;
-      }
-
-      // Kiểm tra sub-document customers trong order
-      const matchedCust = order.customers?.find(
-        (c) =>
-          c.name === customer.name ||
-          (customer.phone && c.phone === customer.phone) ||
-          (customer.facebookUrl && c.facebookUrl === customer.facebookUrl),
-      );
-
-      if (matchedCust) {
-        const custAmount = matchedCust.amount || 0;
-        const custPaid = matchedCust.paidAmount || 0;
-        totalSpent += custAmount;
-        debtAmount += Math.max(0, custAmount - custPaid);
-      } else {
-        const orderAmount = order.totalAmount || 0;
-        const orderPaid = order.paidAmount || 0;
-        totalSpent += orderAmount;
-        debtAmount += Math.max(0, orderAmount - orderPaid);
-      }
-    }
-
-    customer.totalSpent = totalSpent;
-    customer.debtAmount = debtAmount;
-    customer.totalOrders = totalOrders;
-    if (latestOrderDate) {
-      customer.lastOrderDate = latestOrderDate;
+    customer.totalSpent = stats.totalSpent;
+    customer.debtAmount = stats.debtAmount;
+    customer.totalOrders = stats.totalOrders;
+    if (stats.lastOrderDate) {
+      customer.lastOrderDate = stats.lastOrderDate;
     }
 
     return customer.save();
+  }
+
+  /**
+   * Đồng bộ tất cả khách hàng của user từ các đơn hàng hiện có
+   */
+  async syncAllStats(userId: string): Promise<{ updatedCount: number; message: string }> {
+    const userObjId = new Types.ObjectId(userId);
+    const customers = await this.customerModel.find({ userId: userObjId }).exec();
+    let updatedCount = 0;
+
+    for (const customer of customers) {
+      const orderFilter = this.buildCustomerOrderFilter(customer, userObjId);
+      const orders = await this.orderModel.find(orderFilter).exec();
+      const stats = this.computeStatsFromOrders(customer, orders);
+
+      await this.customerModel.updateOne(
+        { _id: customer._id },
+        {
+          $set: {
+            totalSpent: stats.totalSpent,
+            debtAmount: stats.debtAmount,
+            totalOrders: stats.totalOrders,
+            ...(stats.lastOrderDate ? { lastOrderDate: stats.lastOrderDate } : {}),
+          },
+        },
+      );
+      updatedCount++;
+    }
+
+    return {
+      updatedCount,
+      message: `Đã đồng bộ thành công số liệu tài chính cho ${updatedCount} khách hàng`,
+    };
   }
 }

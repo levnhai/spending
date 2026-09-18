@@ -227,6 +227,7 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
 }
 
 import { AppCacheService } from '../../common/cache/app-cache.service';
+import { Customer, CustomerDocument } from '../../schemas/customer.schema';
 
 @Injectable()
 export class OrdersService implements OnApplicationBootstrap {
@@ -234,6 +235,7 @@ export class OrdersService implements OnApplicationBootstrap {
 
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(Customer.name) private customerModel: Model<CustomerDocument>,
     private readonly cacheService: AppCacheService,
     private readonly uploadService: UploadService,
   ) {}
@@ -547,6 +549,131 @@ export class OrdersService implements OnApplicationBootstrap {
     return order;
   }
 
+  /**
+   * Tự động tạo / cập nhật Customer và tính toán lại stats (doanh số, nợ, số đơn) khi có thay đổi đơn hàng
+   */
+  private async syncCustomersFromOrderData(
+    userId: string,
+    customerList: Array<{ name?: string; phone?: string; facebookUrl?: string; address?: string }>,
+    isCreate = false,
+  ) {
+    try {
+      const userObjId = new Types.ObjectId(userId);
+      for (const item of customerList) {
+        if (!item.name || !item.name.trim()) continue;
+
+        const trimmedName = item.name.trim();
+        const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const nameRegex = new RegExp(`^${escapedName}$`, 'i');
+
+        let customer = await this.customerModel.findOne({
+          userId: userObjId,
+          $or: [
+            { name: nameRegex },
+            ...(item.phone ? [{ phone: item.phone.trim() }] : []),
+          ],
+        });
+
+        if (!customer && isCreate) {
+          customer = new this.customerModel({
+            userId: userObjId,
+            name: trimmedName,
+            phone: item.phone?.trim() || '',
+            facebookUrl: item.facebookUrl?.trim() || '',
+            address: item.address?.trim() || '',
+            group: 'RETAIL',
+            totalSpent: 0,
+            debtAmount: 0,
+            totalOrders: 0,
+          });
+          await customer.save();
+        }
+
+        if (customer) {
+          // Tính lại stats cho customer này từ tất cả đơn hàng liên quan
+          const custNameNorm = customer.name.toLowerCase().trim();
+          const custPhoneNorm = customer.phone?.trim();
+          const custFbNorm = customer.facebookUrl?.trim().toLowerCase();
+
+          const relatedOrders = await this.orderModel.find({
+            userId: userObjId,
+            status: { $ne: OrderStatus.CANCELLED },
+            $or: [
+              { 'customers.name': nameRegex },
+              { customerName: nameRegex },
+              ...(customer.phone ? [{ 'customers.phone': customer.phone }, { customerPhone: customer.phone }] : []),
+              ...(customer.facebookUrl ? [{ 'customers.facebookUrl': customer.facebookUrl }, { facebookUrl: customer.facebookUrl }] : []),
+            ],
+          });
+
+          let totalSpent = 0;
+          let paidAmount = 0;
+          let debtAmount = 0;
+          let totalOrders = 0;
+          let latestOrderDate: Date | null = null;
+
+          for (const ord of relatedOrders) {
+            const ordDate = ord.orderDate ? new Date(ord.orderDate) : new Date((ord as any).createdAt || Date.now());
+            if (!latestOrderDate || ordDate > latestOrderDate) {
+              latestOrderDate = ordDate;
+            }
+
+            const matchedSub = (ord.customers || []).filter((c) => {
+              const cn = c.name?.trim().toLowerCase();
+              const cp = c.phone?.trim();
+              const cf = c.facebookUrl?.trim().toLowerCase();
+              return (
+                (custNameNorm && cn === custNameNorm) ||
+                (custPhoneNorm && cp && cp === custPhoneNorm) ||
+                (custFbNorm && cf && cf === custFbNorm)
+              );
+            });
+
+            if (matchedSub.length > 0) {
+              let t = 0;
+              let p = 0;
+              for (const mc of matchedSub) {
+                t += mc.amount || 0;
+                p += mc.paidAmount || 0;
+              }
+              totalSpent += t;
+              paidAmount += p;
+              debtAmount += Math.max(0, t - p);
+              totalOrders += 1;
+            } else {
+              const ordCustName = (ord.customerName || '').trim().toLowerCase();
+              const ordCustPhone = (ord.customerPhone || '').trim();
+              const isRoot =
+                (custNameNorm && ordCustName === custNameNorm) ||
+                (custPhoneNorm && ordCustPhone && ordCustPhone === custPhoneNorm);
+
+              if (isRoot || (!ord.customers || ord.customers.length === 0)) {
+                const ot = ord.totalAmount || 0;
+                const op = ord.paidAmount || 0;
+                totalSpent += ot;
+                paidAmount += op;
+                debtAmount += Math.max(0, ot - op);
+                totalOrders += 1;
+              }
+            }
+          }
+
+          customer.totalSpent = totalSpent;
+          customer.debtAmount = debtAmount;
+          customer.totalOrders = totalOrders;
+          if (latestOrderDate) customer.lastOrderDate = latestOrderDate;
+          if (item.address && !customer.address) customer.address = item.address;
+          if (item.phone && !customer.phone) customer.phone = item.phone;
+          if (item.facebookUrl && !customer.facebookUrl) customer.facebookUrl = item.facebookUrl;
+
+          await customer.save();
+        }
+      }
+    } catch (e: any) {
+      this.logger.warn(`Lỗi khi tự động đồng bộ thống kê khách hàng: ${e.message}`);
+    }
+  }
+
   async create(userId: string, dto: CreateOrderDto) {
     const count = await this.orderModel.countDocuments({ userId: new Types.ObjectId(userId) });
     const orderCode =
@@ -626,15 +753,28 @@ export class OrdersService implements OnApplicationBootstrap {
 
     const saved = await newOrder.save();
     await this.cacheService.invalidateUser(userId, ['orders', 'analytics']);
+
+    // Tự động cập nhật khách hàng liên quan
+    const targetCustomers = (customers.length > 0
+      ? customers
+      : [{ name: dto.customerName, phone: dto.customerPhone, facebookUrl: dto.customerFacebookUrl, address: dto.customerAddress }]
+    ).filter((c) => c && c.name);
+
+    await this.syncCustomersFromOrderData(userId, targetCustomers, true);
+
     return saved;
   }
 
   async update(id: string, userId: string, dto: UpdateOrderDto) {
+    const existingOrder = await this.orderModel.findOne({
+      _id: new Types.ObjectId(id),
+      userId: new Types.ObjectId(userId),
+    });
+
     const updateData: any = { ...dto };
     if (dto.imageUrl !== undefined) {
       updateData.imageUrl = await this.normalizeImageUrl(dto.imageUrl);
     }
-
 
     if (dto.size !== undefined) updateData.size = dto.size;
     if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
@@ -699,6 +839,20 @@ export class OrdersService implements OnApplicationBootstrap {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
     await this.cacheService.invalidateUser(userId, ['orders', 'analytics']);
+
+    // Gom danh sách khách hàng cũ và mới để sync
+    const combinedCustomers: Array<{ name?: string; phone?: string; facebookUrl?: string }> = [];
+    if (existingOrder) {
+      if (existingOrder.customerName) combinedCustomers.push({ name: existingOrder.customerName, phone: existingOrder.customerPhone, facebookUrl: existingOrder.customerFacebookUrl });
+      (existingOrder.customers || []).forEach((c) => combinedCustomers.push({ name: c.name, phone: c.phone, facebookUrl: c.facebookUrl }));
+    }
+    if (updated) {
+      if (updated.customerName) combinedCustomers.push({ name: updated.customerName, phone: updated.customerPhone, facebookUrl: updated.customerFacebookUrl });
+      (updated.customers || []).forEach((c) => combinedCustomers.push({ name: c.name, phone: c.phone, facebookUrl: c.facebookUrl }));
+    }
+
+    await this.syncCustomersFromOrderData(userId, combinedCustomers);
+
     return updated;
   }
 
@@ -728,6 +882,12 @@ export class OrdersService implements OnApplicationBootstrap {
     order.customers = updatedCustomers as any;
     const saved = await order.save();
     await this.cacheService.invalidateUser(userId, ['orders', 'analytics']);
+
+    const targetCustomers: Array<{ name?: string; phone?: string; facebookUrl?: string }> = [];
+    if (order.customerName) targetCustomers.push({ name: order.customerName, phone: order.customerPhone, facebookUrl: order.customerFacebookUrl });
+    (order.customers || []).forEach((c) => targetCustomers.push({ name: c.name, phone: c.phone, facebookUrl: c.facebookUrl }));
+    await this.syncCustomersFromOrderData(userId, targetCustomers);
+
     return saved;
   }
 
@@ -740,6 +900,12 @@ export class OrdersService implements OnApplicationBootstrap {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
     await this.cacheService.invalidateUser(userId, ['orders', 'analytics']);
+
+    const targetCustomers: Array<{ name?: string; phone?: string; facebookUrl?: string }> = [];
+    if (deleted.customerName) targetCustomers.push({ name: deleted.customerName, phone: deleted.customerPhone, facebookUrl: deleted.customerFacebookUrl });
+    (deleted.customers || []).forEach((c) => targetCustomers.push({ name: c.name, phone: c.phone, facebookUrl: c.facebookUrl }));
+    await this.syncCustomersFromOrderData(userId, targetCustomers);
+
     return { message: 'Xóa đơn hàng thành công' };
   }
 }

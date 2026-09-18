@@ -22,7 +22,9 @@ interface CustomerFilterBarProps {
   onSortByChange: (sort: string) => void;
   onAddNew: () => void;
   onRefresh?: () => void;
+  onSyncAll?: () => void;
   loading?: boolean;
+  syncing?: boolean;
 }
 
 export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
@@ -36,7 +38,9 @@ export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
   onSortByChange,
   onAddNew,
   onRefresh,
+  onSyncAll,
   loading,
+  syncing,
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3 sm:p-4 shadow-sm space-y-3">
@@ -63,16 +67,17 @@ export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
           )}
         </div>
 
-        {/* Refresh button */}
-        {onRefresh && (
+        {/* Sync All button */}
+        {onSyncAll && (
           <button
             type="button"
-            onClick={onRefresh}
-            className="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 cursor-pointer"
-            title="Làm mới dữ liệu"
+            onClick={onSyncAll}
+            disabled={syncing}
+            className="p-2 sm:p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-colors shadow-sm shrink-0 cursor-pointer"
+            title="Đồng bộ lại toàn bộ số liệu khách hàng từ đơn hàng"
           >
             <RefreshCw
-              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
             />
           </button>
         )}
