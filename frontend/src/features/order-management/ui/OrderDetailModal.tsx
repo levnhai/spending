@@ -19,6 +19,7 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
+  Plane,
 } from "lucide-react";
 import {
   Order,
@@ -122,9 +123,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const remainingAmount = isCompleted ? 0 : Math.max(0, totalAmount - paidAmount);
   const costPrice = Number(order.costPrice) || 0;
   const shippingFee = Number(order.shippingFee) || 0;
+  const shippingFeeCnVn = Number(order.shippingFeeCnVn) || 0;
   
-  // Tính lợi nhuận ước tính = Tổng tiền cần thu - Tiền ship - Tiền vốn (nếu có)
-  const estimatedProfit = totalAmount - shippingFee - costPrice;
+  // Tính lợi nhuận ước tính = Tổng tiền cần thu - Tiền ship khách - Tiền ship Trung-Việt - Tiền vốn (nếu có)
+  const estimatedProfit = totalAmount - shippingFee - shippingFeeCnVn - costPrice;
 
   const currentStatusConfig =
     ORDER_STATUS_CONFIG[order.status] || ORDER_STATUS_CONFIG.ORDERED;
@@ -403,8 +405,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <span>Tài Chính & Thanh Toán</span>
             </h4>
 
-            {/* Chi tiết các khoản: Vốn - Bán - Ship */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {/* Chi tiết các khoản: Vốn - Ship Khách - Ship Trung Việt - Lợi Nhuận */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-0.5">
                 <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                   <DollarSign className="w-3 h-3 text-slate-400" />
@@ -418,14 +420,24 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-0.5">
                 <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                   <Truck className="w-3 h-3 text-cyan-500" />
-                  <span>Tiền ship</span>
+                  <span>Ship khách (VN)</span>
                 </span>
                 <div className="font-extrabold text-sm text-cyan-600 dark:text-cyan-400">
                   {renderAmount(shippingFee)}
                 </div>
               </div>
 
-              <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-0.5">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-0.5">
+                <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                  <Plane className="w-3 h-3 text-orange-500" />
+                  <span>Ship Trung - Việt</span>
+                </span>
+                <div className="font-extrabold text-sm text-orange-600 dark:text-orange-400">
+                  {renderAmount(shippingFeeCnVn)}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-0.5">
                 <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                   <span>Lợi nhuận tạm tính</span>

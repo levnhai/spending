@@ -62,11 +62,12 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
       const slot = timeSlots.find((s) => h >= s.minHour && h < s.maxHour) || timeSlots[timeSlots.length - 1];
       const rev = order.totalAmount || 0;
       const ship = order.shippingFee || 0;
+      const shipCnVn = order.shippingFeeCnVn || 0;
       const cost = order.costPrice || 0;
       slot.revenue += rev;
-      slot.shipping += ship;
+      slot.shipping += ship + shipCnVn;
       slot.cost += cost;
-      slot.profit += rev - ship - cost;
+      slot.profit += rev - ship - shipCnVn - cost;
     }
 
     return timeSlots.map((s) => ({
@@ -97,11 +98,12 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
       if (slot) {
         const rev = order.totalAmount || 0;
         const ship = order.shippingFee || 0;
+        const shipCnVn = order.shippingFeeCnVn || 0;
         const cost = order.costPrice || 0;
         slot.revenue += rev;
-        slot.shipping += ship;
+        slot.shipping += ship + shipCnVn;
         slot.cost += cost;
-        slot.profit += rev - ship - cost;
+        slot.profit += rev - ship - shipCnVn - cost;
       }
     }
 
@@ -135,11 +137,12 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
       if (slot) {
         const rev = order.totalAmount || 0;
         const ship = order.shippingFee || 0;
+        const shipCnVn = order.shippingFeeCnVn || 0;
         const cost = order.costPrice || 0;
         slot.revenue += rev;
-        slot.shipping += ship;
+        slot.shipping += ship + shipCnVn;
         slot.cost += cost;
-        slot.profit += rev - ship - cost;
+        slot.profit += rev - ship - shipCnVn - cost;
       }
     }
 
@@ -170,11 +173,12 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
       if (slot) {
         const rev = order.totalAmount || 0;
         const ship = order.shippingFee || 0;
+        const shipCnVn = order.shippingFeeCnVn || 0;
         const cost = order.costPrice || 0;
         slot.revenue += rev;
-        slot.shipping += ship;
+        slot.shipping += ship + shipCnVn;
         slot.cost += cost;
-        slot.profit += rev - ship - cost;
+        slot.profit += rev - ship - shipCnVn - cost;
       }
     }
 
@@ -209,11 +213,12 @@ function buildProfitTimeline(orders: OrderDocument[], period: string = 'all') {
     if (slot) {
       const rev = order.totalAmount || 0;
       const ship = order.shippingFee || 0;
+      const shipCnVn = order.shippingFeeCnVn || 0;
       const cost = order.costPrice || 0;
       slot.revenue += rev;
-      slot.shipping += ship;
+      slot.shipping += ship + shipCnVn;
       slot.cost += cost;
-      slot.profit += rev - ship - cost;
+      slot.profit += rev - ship - shipCnVn - cost;
     }
   }
 
@@ -575,18 +580,20 @@ export class OrdersService implements OnApplicationBootstrap {
 
         // 1. Tổng doanh thu (Gross Revenue)
         const totalRevenue = activeOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-        // 2. Tổng phí vận chuyển (Shipping Fee)
+        // 2. Tổng phí vận chuyển khách (Shipping Fee)
         const totalShippingFee = activeOrders.reduce((sum, o) => sum + (o.shippingFee || 0), 0);
-        // 3. Tổng tiền vốn (Cost Price)
+        // 3. Tổng phí ship Trung - Việt (China-VN Shipping Fee)
+        const totalShippingFeeCnVn = activeOrders.reduce((sum, o) => sum + (o.shippingFeeCnVn || 0), 0);
+        // 4. Tổng tiền vốn (Cost Price)
         const totalCostPrice = activeOrders.reduce((sum, o) => sum + (o.costPrice || 0), 0);
 
-        // 4. Doanh thu thuần = Tổng doanh thu - Phí ship
+        // 5. Doanh thu thuần = Tổng doanh thu - Phí ship khách
         const netRevenue = Math.max(0, totalRevenue - totalShippingFee);
 
-        // 5. Lợi nhuận = Tổng doanh thu - Phí ship - Tiền vốn (hoặc Doanh thu thuần - Tiền vốn)
-        const profit = totalRevenue - totalShippingFee - totalCostPrice;
+        // 6. Lợi nhuận = Tổng doanh thu - Phí ship khách - Phí ship Trung Việt - Tiền vốn
+        const profit = totalRevenue - totalShippingFee - totalShippingFeeCnVn - totalCostPrice;
 
-        // 6. Tỷ suất lợi nhuận = (Lợi nhuận / Tổng doanh thu) * 100%
+        // 7. Tỷ suất lợi nhuận = (Lợi nhuận / Tổng doanh thu) * 100%
         const profitMargin = totalRevenue > 0 ? Number(((profit / totalRevenue) * 100).toFixed(1)) : 0;
 
         // Thanh toán & công nợ
@@ -609,12 +616,13 @@ export class OrdersService implements OnApplicationBootstrap {
 
         return {
           totalOrders,
-          totalRevenue,       // Tổng doanh thu
-          totalShippingFee,   // Phí vận chuyển
-          totalCostPrice,     // Tiền vốn
-          netRevenue,         // Doanh thu thuần
-          profit,             // Lợi nhuận
-          profitMargin,       // Tỷ suất lợi nhuận (%)
+          totalRevenue,          // Tổng doanh thu
+          totalShippingFee,      // Phí vận chuyển khách
+          totalShippingFeeCnVn,  // Phí ship Trung - Việt
+          totalCostPrice,        // Tiền vốn
+          netRevenue,            // Doanh thu thuần
+          profit,                // Lợi nhuận
+          profitMargin,          // Tỷ suất lợi nhuận (%)
           totalPaid,          // Thực thu đã thanh toán
           totalRemaining,     // Công nợ còn lại
           orderedCount,
@@ -810,6 +818,9 @@ export class OrdersService implements OnApplicationBootstrap {
           note: c.note || '',
           size: c.size || '',
           color: c.color || '',
+          shippingFee: c.shippingFee || 0,
+          shippingFeeCnVn: c.shippingFeeCnVn || 0,
+          costPrice: c.costPrice || 0,
           imageUrl: c.imageUrl ? await this.normalizeImageUrl(c.imageUrl) : '',
         };
       }),
@@ -845,6 +856,7 @@ export class OrdersService implements OnApplicationBootstrap {
       paidAmount,
       costPrice: dto.costPrice || 0,
       shippingFee: dto.shippingFee || 0,
+      shippingFeeCnVn: dto.shippingFeeCnVn || 0,
       paymentStatus: orderPaymentStatus,
       customerName: primaryCust?.name || dto.customerName || '',
       customerPhone: primaryCust?.phone || dto.customerPhone || '',
@@ -883,8 +895,10 @@ export class OrdersService implements OnApplicationBootstrap {
     }
 
     if (dto.size !== undefined) updateData.size = dto.size;
+    if (dto.orderCode !== undefined && dto.orderCode.trim()) updateData.orderCode = dto.orderCode.trim();
     if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
     if (dto.shippingFee !== undefined) updateData.shippingFee = dto.shippingFee;
+    if (dto.shippingFeeCnVn !== undefined) updateData.shippingFeeCnVn = dto.shippingFeeCnVn;
 
     const isOrderCompleted = dto.status === OrderStatus.COMPLETED;
 
@@ -919,6 +933,9 @@ export class OrdersService implements OnApplicationBootstrap {
           paymentStatus,
           note: c.note || '',
           size: c.size || '',
+          shippingFee: c.shippingFee !== undefined ? c.shippingFee : (existingCust?.shippingFee || 0),
+          shippingFeeCnVn: c.shippingFeeCnVn !== undefined ? c.shippingFeeCnVn : (existingCust?.shippingFeeCnVn || 0),
+          costPrice: c.costPrice !== undefined ? c.costPrice : (existingCust?.costPrice || 0),
         };
       });
 

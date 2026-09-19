@@ -20,6 +20,7 @@ export interface OrderCustomer {
   amount?: number; // Tổng tiền khách này cần trả (tiền hàng + tiền ship)
   paidAmount?: number; // Tiền khách này đã thanh toán
   shippingFee?: number; // Phí vận chuyển / ship riêng cho khách này
+  shippingFeeCnVn?: number; // Phí vận chuyển từ Trung Quốc về Việt Nam
   costPrice?: number; // Tiền vốn tương ứng với phần khách này
   orderDate?: string; // Ngày lên đơn
   status?: OrderStatusType; // Trạng thái: Đã đặt → Kho Trung → Kho Việt → Nhà → Thành công → Đã hủy
@@ -39,7 +40,8 @@ export interface Order {
   totalAmount: number; // Tổng tiền cả đơn (= ∑ amount)
   paidAmount: number; // Tổng tiền đã thanh toán (= ∑ paidAmount)
   costPrice?: number; // Tiền vốn hàng hóa
-  shippingFee?: number; // Phí vận chuyển / ship
+  shippingFee?: number; // Phí vận chuyển / ship khách
+  shippingFeeCnVn?: number; // Phí vận chuyển từ Trung Quốc về Việt Nam
   orderDate: string;
   status: OrderStatusType;
   paymentStatus: PaymentStatusType;
@@ -56,14 +58,15 @@ export interface Order {
 
 export interface OrderStats {
   totalOrders: number;
-  totalRevenue: number;       // Tổng doanh thu
-  totalShippingFee: number;   // Phí vận chuyển
-  totalCostPrice: number;     // Tiền vốn
-  netRevenue: number;         // Doanh thu thuần = Tổng doanh thu - Phí ship
-  profit: number;             // Lợi nhuận = Doanh thu - Phí ship - Tiền vốn
-  profitMargin: number;       // Tỷ suất lợi nhuận (%)
-  totalPaid: number;          // Thực thu đã thanh toán
-  totalRemaining: number;     // Công nợ còn lại
+  totalRevenue: number;         // Tổng doanh thu
+  totalShippingFee: number;     // Phí vận chuyển khách
+  totalShippingFeeCnVn?: number; // Phí vận chuyển Trung - Việt
+  totalCostPrice: number;       // Tiền vốn
+  netRevenue: number;           // Doanh thu thuần = Tổng doanh thu - Phí ship
+  profit: number;               // Lợi nhuận = Doanh thu - Phí ship khách - Phí ship Trung Việt - Tiền vốn
+  profitMargin: number;         // Tỷ suất lợi nhuận (%)
+  totalPaid: number;            // Thực thu đã thanh toán
+  totalRemaining: number;       // Công nợ còn lại
   orderedCount: number;
   cnWarehouseCount: number;
   vnWarehouseCount: number;
@@ -93,6 +96,7 @@ export interface CreateOrderPayload {
   paidAmount?: number;
   costPrice?: number;
   shippingFee?: number;
+  shippingFeeCnVn?: number;
   orderDate?: string;
   status?: OrderStatusType;
   paymentStatus?: PaymentStatusType;

@@ -473,12 +473,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                             {mainCustomer.phone}
                           </span>
                         )}
-                        {(mainCustomer?.address || order.customerAddress || order.address) && (
-                          <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 truncate max-w-xs" title={mainCustomer?.address || order.customerAddress || order.address}>
-                            <MapPin className="w-3 h-3 shrink-0 text-rose-500" />
-                            <span className="truncate">{mainCustomer?.address || order.customerAddress || order.address}</span>
-                          </span>
-                        )}
                         {(mainCustomer?.facebookUrl || order.customerFacebookUrl || order.facebookUrl) && (
                           <a
                             href={mainCustomer?.facebookUrl || order.customerFacebookUrl || order.facebookUrl}

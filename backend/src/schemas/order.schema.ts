@@ -63,6 +63,9 @@ export class OrderCustomer {
   shippingFee?: number; // Phí ship cho khách hàng này
 
   @Prop({ default: 0 })
+  shippingFeeCnVn?: number; // Phí ship từ Trung Quốc về Việt Nam
+
+  @Prop({ default: 0 })
   costPrice?: number; // Tiền vốn tương ứng với khách hàng này
 
   @Prop({ default: '' })
@@ -107,9 +110,13 @@ export class Order {
   @Prop({ default: 0 })
   costPrice: number;
 
-  // Phí vận chuyển (Tiền ship)
+  // Phí vận chuyển (Tiền ship khách / nội địa)
   @Prop({ default: 0 })
   shippingFee: number;
+
+  // Phí ship từ Trung Quốc về Việt Nam
+  @Prop({ default: 0 })
+  shippingFeeCnVn: number;
 
   @Prop({ default: Date.now })
   orderDate: Date;

@@ -56,10 +56,11 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
     );
   }
 
-  // 1. Dữ liệu Biểu đồ tròn: Cơ Cấu Tài Chính (Vốn, Ship, Lợi Nhuận)
+  // 1. Dữ liệu Biểu đồ tròn: Cơ Cấu Tài Chính (Vốn, Ship VN, Ship TQ-VN, Lợi Nhuận)
   const revenue = stats?.totalRevenue || 0;
   const cost = stats?.totalCostPrice || 0;
   const ship = stats?.totalShippingFee || 0;
+  const shipCnVn = stats?.totalShippingFeeCnVn || 0;
   const profit = stats?.profit || 0;
 
   const moneyPieData = [
@@ -70,14 +71,20 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
       description: 'Giá vốn hàng đã bán',
     },
     {
-      name: 'Phí Vận Chuyển',
+      name: 'Ship Khách',
       value: ship,
-      color: '#8B5CF6', // Purple
-      description: 'Tổng tiền cước ship',
+      color: '#06B6D4', // Cyan
+      description: 'Tổng tiền cước ship khách',
+    },
+    {
+      name: 'Ship TQ - VN',
+      value: shipCnVn,
+      color: '#F97316', // Orange
+      description: 'Phí ship Trung về Việt',
     },
     {
       name: 'Lợi Nhuận',
-      value: profit > 0 ? profit : (cost === 0 && ship === 0 && revenue > 0 ? revenue : 0),
+      value: profit > 0 ? profit : (cost === 0 && ship === 0 && shipCnVn === 0 && revenue > 0 ? revenue : 0),
       color: profit >= 0 ? '#10B981' : '#EF4444', // Emerald / Rose
       description: 'Lợi nhuận thực tế',
     },

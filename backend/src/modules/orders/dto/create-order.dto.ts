@@ -63,6 +63,11 @@ export class OrderCustomerDto {
   @IsNumber()
   shippingFee?: number;
 
+  @ApiPropertyOptional({ example: 45000, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  shippingFeeCnVn?: number;
+
   @ApiPropertyOptional({ example: 250000, default: 0 })
   @IsOptional()
   @IsNumber()
@@ -146,6 +151,11 @@ export class CreateOrderDto {
   @IsOptional()
   @IsNumber()
   shippingFee?: number;
+
+  @ApiPropertyOptional({ example: 150000, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  shippingFeeCnVn?: number;
 
   @ApiPropertyOptional({ example: '2026-09-03T10:00:00.000Z' })
   @IsOptional()

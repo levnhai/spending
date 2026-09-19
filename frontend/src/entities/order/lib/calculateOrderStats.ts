@@ -8,6 +8,7 @@ export function calculateOrderStats(orders: Order[]): OrderStats {
 
   let totalRevenue = 0;
   let totalShippingFee = 0;
+  let totalShippingFeeCnVn = 0;
   let totalCostPrice = 0;
   let totalPaid = 0;
   let totalRemaining = 0;
@@ -24,6 +25,7 @@ export function calculateOrderStats(orders: Order[]): OrderStats {
     const paid = Number(order.paidAmount) || 0;
     const cost = Number(order.costPrice) || 0;
     const ship = Number(order.shippingFee) || 0;
+    const shipCnVn = Number(order.shippingFeeCnVn) || 0;
 
     switch (order.status) {
       case 'ORDERED':
@@ -55,13 +57,14 @@ export function calculateOrderStats(orders: Order[]): OrderStats {
       totalPaid += paid;
       totalCostPrice += cost;
       totalShippingFee += ship;
+      totalShippingFeeCnVn += shipCnVn;
       totalRemaining += Math.max(0, rev - paid);
     }
   }
 
   const inProgressCount = orderedCount + cnWarehouseCount + vnWarehouseCount + atHomeCount;
   const netRevenue = totalRevenue - totalShippingFee;
-  const profit = totalRevenue - totalShippingFee - totalCostPrice;
+  const profit = totalRevenue - totalShippingFee - totalShippingFeeCnVn - totalCostPrice;
   const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
   const nonCancelledOrders = totalOrders - cancelledOrders;
   const completionRate =
@@ -71,6 +74,7 @@ export function calculateOrderStats(orders: Order[]): OrderStats {
     totalOrders,
     totalRevenue,
     totalShippingFee,
+    totalShippingFeeCnVn,
     totalCostPrice,
     netRevenue,
     profit,

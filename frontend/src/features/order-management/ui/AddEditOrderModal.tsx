@@ -29,6 +29,7 @@ import {
   Sparkles,
   Zap,
   Camera,
+  Plane,
 } from "lucide-react";
 import {
   Order,
@@ -70,6 +71,7 @@ interface ItemRow {
   costPriceStr: string;
   amountStr: string;
   shippingFeeStr: string;
+  shippingFeeCnVnStr: string;
   paidAmountStr: string;
   note: string;
 }
@@ -101,6 +103,7 @@ const createEmptyItemRow = (defaultName = ""): ItemRow => ({
   costPriceStr: "",
   amountStr: "",
   shippingFeeStr: "",
+  shippingFeeCnVnStr: "",
   paidAmountStr: "",
   note: "",
 });
@@ -161,6 +164,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   // Chi phí
   const [costPriceStr, setCostPriceStr] = useState("");
   const [shippingFeeStr, setShippingFeeStr] = useState("");
+  const [shippingFeeCnVnStr, setShippingFeeCnVnStr] = useState("");
   const [orderDateStr, setOrderDateStr] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -179,6 +183,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const [custCostPriceStr, setCustCostPriceStr] = useState("");
   const [custUnitPriceStr, setCustUnitPriceStr] = useState("");
   const [custShippingFeeStr, setCustShippingFeeStr] = useState("");
+  const [custShippingFeeCnVnStr, setCustShippingFeeCnVnStr] = useState("");
   const [custAmountStr, setCustAmountStr] = useState("");
   const [custPaidAmountStr, setCustPaidAmountStr] = useState("");
   const [custError, setCustError] = useState("");
@@ -245,6 +250,11 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       setShippingFeeStr(
         orderToEdit.shippingFee
           ? formatNumberWithSpaces(orderToEdit.shippingFee)
+          : "",
+      );
+      setShippingFeeCnVnStr(
+        orderToEdit.shippingFeeCnVn
+          ? formatNumberWithSpaces(orderToEdit.shippingFeeCnVn)
           : "",
       );
 
@@ -333,6 +343,11 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   Math.round(orderToEdit.shippingFee / custs.length),
                 )
               : "",
+            shippingFeeCnVnStr: orderToEdit.shippingFeeCnVn
+              ? formatNumberWithSpaces(
+                  Math.round(orderToEdit.shippingFeeCnVn / custs.length),
+                )
+              : "",
             paidAmountStr: c.paidAmount
               ? formatNumberWithSpaces(c.paidAmount)
               : "",
@@ -384,6 +399,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       setImageUrl("");
       setCostPriceStr("");
       setShippingFeeStr("");
+      setShippingFeeCnVnStr("");
       setOrderDateStr(new Date().toISOString().split("T")[0]);
       setSingleCustName("");
       setSingleCustPhone("");
@@ -405,18 +421,21 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
 
   const costPrice = parseFormattedNumber(costPriceStr);
   const shippingFee = parseFormattedNumber(shippingFeeStr);
+  const shippingFeeCnVn = parseFormattedNumber(shippingFeeCnVnStr);
 
   // Tính tổng tiền & chi phí dựa theo mode
   let calculatedTotalAmount = 0;
   let calculatedPaidAmount = 0;
   let calculatedCostPrice = 0;
   let calculatedShippingFee = 0;
+  let calculatedShippingFeeCnVn = 0;
 
   if (orderMode === "SINGLE_ITEM") {
     calculatedTotalAmount = parseFormattedNumber(singleItemAmountStr);
     calculatedPaidAmount = parseFormattedNumber(singleCustPaidAmountStr);
     calculatedCostPrice = costPrice;
     calculatedShippingFee = shippingFee;
+    calculatedShippingFeeCnVn = shippingFeeCnVn;
   } else if (orderMode === "CUSTOMER_ITEMS") {
     calculatedTotalAmount = comboItems.reduce(
       (sum, item) => sum + parseFormattedNumber(item.amountStr),
@@ -434,6 +453,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       (sum, item) => sum + parseFormattedNumber(item.shippingFeeStr),
       0,
     );
+    calculatedShippingFeeCnVn = comboItems.reduce(
+      (sum, item) => sum + parseFormattedNumber(item.shippingFeeCnVnStr),
+      0,
+    );
   } else if (orderMode === "GROUP_ORDER") {
     calculatedTotalAmount = groupCustomers.reduce(
       (sum, c) => sum + (Number(c.amount) || 0),
@@ -445,6 +468,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     );
     calculatedShippingFee = groupCustomers.reduce(
       (sum, c) => sum + (Number(c.shippingFee) || 0),
+      0,
+    );
+    calculatedShippingFeeCnVn = groupCustomers.reduce(
+      (sum, c) => sum + (Number(c.shippingFeeCnVn) || 0),
       0,
     );
     const unitCost = parseFormattedNumber(groupCostPriceStr);
@@ -465,7 +492,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     calculatedTotalAmount - calculatedPaidAmount,
   );
   const estimatedProfit =
-    calculatedTotalAmount - calculatedShippingFee - calculatedCostPrice;
+    calculatedTotalAmount - calculatedShippingFee - calculatedShippingFeeCnVn - calculatedCostPrice;
 
   // Quản lý Combo Items (1 Khách Nhiều SP)
   const handleAddComboItem = () => {
@@ -530,6 +557,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       defaultSelling > 0 ? formatNumberWithSpaces(defaultSelling) : "";
     setCustUnitPriceStr(formattedSelling);
     setCustShippingFeeStr("");
+    setCustShippingFeeCnVnStr("");
     setCustAmountStr(formattedSelling);
     setCustPaidAmountStr("");
     setCustError("");
@@ -552,9 +580,13 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
         : parseFormattedNumber(groupCostPriceStr);
     setCustCostPriceStr(unitCost > 0 ? formatNumberWithSpaces(unitCost) : "");
 
-    // Tiền ship
+    // Tiền ship khách
     const ship = target.shippingFee || 0;
     setCustShippingFeeStr(ship > 0 ? formatNumberWithSpaces(ship) : "");
+
+    // Tiền ship Trung - Việt
+    const shipCn = target.shippingFeeCnVn || 0;
+    setCustShippingFeeCnVnStr(shipCn > 0 ? formatNumberWithSpaces(shipCn) : "");
 
     // Đơn giá bán ra
     const totalAmt = target.amount || 0;
@@ -591,6 +623,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
     const qty = Math.max(1, parseInt(custQuantityStr) || 1);
     const unitPrice = parseFormattedNumber(custUnitPriceStr);
     const ship = parseFormattedNumber(custShippingFeeStr);
+    const shipCn = parseFormattedNumber(custShippingFeeCnVnStr);
     const calculatedTotal = unitPrice * qty + ship;
     const total =
       calculatedTotal > 0
@@ -625,6 +658,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       amount: total,
       paidAmount: paid,
       shippingFee: ship,
+      shippingFeeCnVn: shipCn,
       costPrice: cost,
       paymentStatus,
       status: custForm.status || "ORDERED",
@@ -727,6 +761,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             imageUrl: imageUrl.trim() || undefined,
             costPrice: costPrice,
             shippingFee: shippingFee,
+            shippingFeeCnVn: shippingFeeCnVn,
             customerName: singleCustName.trim(),
             customerPhone: singleCustPhone.trim() || undefined,
             customerAddress: singleCustAddress.trim() || undefined,
@@ -753,6 +788,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 paidAmount: orderToEdit.status === "COMPLETED" ? itemAmount : itemPaid,
                 paymentStatus: orderToEdit.status === "COMPLETED" ? "PAID" : pStatus,
                 status: orderToEdit.status || "ORDERED",
+                shippingFee: shippingFee,
+                shippingFeeCnVn: shippingFeeCnVn,
+                costPrice: costPrice,
                 orderDate: finalDateISO,
                 note: singleItemNote.trim() || undefined,
               },
@@ -770,6 +808,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
           );
           const totalShip = validItems.reduce(
             (sum, it) => sum + parseFormattedNumber(it.shippingFeeStr),
+            0,
+          );
+          const totalShipCnVn = validItems.reduce(
+            (sum, it) => sum + parseFormattedNumber(it.shippingFeeCnVnStr),
             0,
           );
           const totalPaid = validItems.reduce(
@@ -793,6 +835,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               undefined,
             costPrice: totalCost,
             shippingFee: totalShip,
+            shippingFeeCnVn: totalShipCnVn,
             customerName: singleCustName.trim(),
             customerPhone: singleCustPhone.trim() || undefined,
             customerAddress: singleCustAddress.trim() || undefined,
@@ -818,6 +861,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 quantity: Math.max(1, parseInt(it.quantityStr) || 1),
                 amount: itAmt,
                 paidAmount: isOrderCompleted ? itAmt : itPaid,
+                shippingFee: parseFormattedNumber(it.shippingFeeStr),
+                shippingFeeCnVn: parseFormattedNumber(it.shippingFeeCnVnStr),
+                costPrice: parseFormattedNumber(it.costPriceStr),
                 paymentStatus: isOrderCompleted
                   ? "PAID"
                   : itPaid >= itAmt && itAmt > 0
@@ -840,6 +886,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             imageUrl: imageUrl.trim() || undefined,
             costPrice: costPrice,
             shippingFee: shippingFee,
+            shippingFeeCnVn: calculatedShippingFeeCnVn,
             totalAmount: calculatedTotalAmount,
             paidAmount: calculatedPaidAmount,
             status: orderToEdit.status || "ORDERED",
@@ -849,6 +896,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               size: c.size?.trim() || size.trim() || undefined,
               color: c.color?.trim() || color.trim() || undefined,
               imageUrl: c.imageUrl?.trim() || undefined,
+              shippingFee: Number(c.shippingFee) || 0,
+              shippingFeeCnVn: Number(c.shippingFeeCnVn) || 0,
+              costPrice: Number(c.costPrice) || 0,
               orderDate: c.orderDate
                 ? new Date(c.orderDate).toISOString()
                 : finalDateISO,
@@ -864,6 +914,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             const itAmt = parseFormattedNumber(it.amountStr);
             const itCost = parseFormattedNumber(it.costPriceStr);
             const itShip = parseFormattedNumber(it.shippingFeeStr);
+            const itShipCnVn = parseFormattedNumber(it.shippingFeeCnVnStr);
             const itPaid = parseFormattedNumber(it.paidAmountStr);
             const itQty = Math.max(1, parseInt(it.quantityStr) || 1);
 
@@ -883,6 +934,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               imageUrl: it.imageUrl?.trim() || undefined,
               costPrice: itCost,
               shippingFee: itShip,
+              shippingFeeCnVn: itShipCnVn,
               customerName: singleCustName.trim(),
               customerPhone: singleCustPhone.trim() || undefined,
               customerAddress: singleCustAddress.trim() || undefined,
@@ -909,6 +961,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   quantity: itQty,
                   amount: itAmt,
                   paidAmount: itPaid,
+                  costPrice: itCost,
+                  shippingFee: itShip,
+                  shippingFeeCnVn: itShipCnVn,
                   paymentStatus: pStatus,
                   status: "ORDERED",
                   orderDate: finalDateISO,
@@ -930,9 +985,10 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
               const cAmt = Number(c.amount) || 0;
               const cPaid = Number(c.paidAmount) || 0;
               const cQty = Number(c.quantity) || 1;
-              const cCost = unitCost > 0 ? unitCost * cQty : 0;
+              const cCost = unitCost > 0 ? unitCost * cQty : (Number(c.costPrice) || 0);
 
               const cShip = Number(c.shippingFee) || 0;
+              const cShipCnVn = Number(c.shippingFeeCnVn) || 0;
 
               let pStatus: PaymentStatusType = c.paymentStatus || "UNPAID";
               if (cPaid >= cAmt && cAmt > 0) pStatus = "PAID";
@@ -954,6 +1010,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 imageUrl: c.imageUrl?.trim() || imageUrl.trim() || undefined,
                 costPrice: cCost,
                 shippingFee: cShip,
+                shippingFeeCnVn: cShipCnVn,
                 customerName: c.name.trim(),
                 customerPhone: c.phone?.trim() || undefined,
                 customerAddress: c.address?.trim() || undefined,
@@ -971,6 +1028,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     ...c,
                     costPrice: cCost,
                     shippingFee: cShip,
+                    shippingFeeCnVn: cShipCnVn,
                     size: c.size?.trim() || undefined,
                     color: c.color?.trim() || undefined,
                     imageUrl: c.imageUrl?.trim() || undefined,
@@ -1000,6 +1058,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             imageUrl: imageUrl.trim() || undefined,
             costPrice: costPrice,
             shippingFee: shippingFee,
+            shippingFeeCnVn: shippingFeeCnVn,
             customerName: singleCustName.trim(),
             customerPhone: singleCustPhone.trim() || undefined,
             customerAddress: singleCustAddress.trim() || undefined,
@@ -1024,6 +1083,9 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 quantity: itemQty,
                 amount: itemAmount,
                 paidAmount: itemPaid,
+                costPrice: costPrice,
+                shippingFee: shippingFee,
+                shippingFeeCnVn: shippingFeeCnVn,
                 paymentStatus: pStatus,
                 status: "ORDERED",
                 orderDate: finalDateISO,
@@ -1417,20 +1479,51 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       Thông Tin Sản Phẩm
                     </span>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                        Tên sản phẩm / món hàng{" "}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Ví dụ: Áo polo phối viền, Giày sneaker cổ cao..."
-                        required
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-cyan-500/40 outline-none"
-                      />
-                    </div>
+                    {isEditing ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Tên sản phẩm / món hàng{" "}
+                            <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Ví dụ: Áo polo phối viền, Giày sneaker cổ cao..."
+                            required
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-cyan-500/40 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Mã đơn hàng
+                          </label>
+                          <input
+                            type="text"
+                            value={orderCode}
+                            onChange={(e) => setOrderCode(e.target.value)}
+                            placeholder="DH-0001"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 text-sm font-mono font-bold focus:ring-2 focus:ring-cyan-500/40 outline-none"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                          Tên sản phẩm / món hàng{" "}
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="Ví dụ: Áo polo phối viền, Giày sneaker cổ cao..."
+                          required
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-cyan-500/40 outline-none"
+                        />
+                      </div>
+                    )}
 
                     {/* Size Selector & Color Selector */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1600,7 +1693,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       Chi Phí & Thanh Toán
                     </span>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                           Tiền vốn nhập
@@ -1617,6 +1710,25 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                           }
                           placeholder="0"
                           className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-amber-500 font-bold outline-none text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                          Ship Trung - Việt
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={14}
+                          value={shippingFeeCnVnStr}
+                          onChange={(e) =>
+                            setShippingFeeCnVnStr(
+                              e.target.value.replace(/\D/g, "").slice(0, 14),
+                            )
+                          }
+                          placeholder="0"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-orange-500 font-bold outline-none text-xs"
                         />
                       </div>
 
@@ -1748,36 +1860,81 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                          Link Facebook / Liên hệ
-                        </label>
-                        <input
-                          type="url"
-                          value={singleCustFacebook}
-                          onChange={(e) =>
-                            setSingleCustFacebook(e.target.value)
-                          }
-                          placeholder="https://facebook.com/username"
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500/40 outline-none"
-                        />
+                    {isEditing ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Mã đơn hàng
+                          </label>
+                          <input
+                            type="text"
+                            value={orderCode}
+                            onChange={(e) => setOrderCode(e.target.value)}
+                            placeholder="DH-0001"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Link Facebook / Liên hệ
+                          </label>
+                          <input
+                            type="url"
+                            value={singleCustFacebook}
+                            onChange={(e) =>
+                              setSingleCustFacebook(e.target.value)
+                            }
+                            placeholder="https://facebook.com/username"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500/40 outline-none text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Địa chỉ giao hàng{" "}
+                            <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={singleCustAddress}
+                            onChange={(e) => setSingleCustAddress(e.target.value)}
+                            placeholder="Số nhà, đường... (bắt buộc)"
+                            required
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500/40 outline-none text-xs"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                          Địa chỉ giao hàng{" "}
-                          <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={singleCustAddress}
-                          onChange={(e) => setSingleCustAddress(e.target.value)}
-                          placeholder="Số nhà, đường, quận/huyện... (bắt buộc)"
-                          required
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500/40 outline-none"
-                        />
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Link Facebook / Liên hệ
+                          </label>
+                          <input
+                            type="url"
+                            value={singleCustFacebook}
+                            onChange={(e) =>
+                              setSingleCustFacebook(e.target.value)
+                            }
+                            placeholder="https://facebook.com/username"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500/40 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Địa chỉ giao hàng{" "}
+                            <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={singleCustAddress}
+                            onChange={(e) => setSingleCustAddress(e.target.value)}
+                            placeholder="Số nhà, đường, quận/huyện... (bắt buộc)"
+                            required
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500/40 outline-none"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Khối Danh Sách Món Hàng Của Khách (Mỗi món có Ảnh riêng) */}
@@ -1997,125 +2154,149 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                               </div>
                             </div>
 
-                            {/* Hàng 3: 4 trường tài chính độc lập cho món này (Giá gốc, Giá bán, Tiền ship, Đã cọc) */}
-                            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/50 space-y-1.5">
-                              <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider block">
-                                💰 Chi phí & Giá món #{idx + 1}
-                              </span>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                                {/* Giá gốc / Vốn */}
-                                <div>
-                                  <label className="block text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase mb-0.5">
-                                    Giá gốc / Vốn
-                                  </label>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={14}
-                                    value={item.costPriceStr}
-                                    onChange={(e) =>
-                                      handleUpdateComboItem(
-                                        idx,
-                                        "costPriceStr",
-                                        e.target.value
-                                          .replace(/\D/g, "")
-                                          .slice(0, 14),
-                                      )
-                                    }
-                                    placeholder="0"
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-amber-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-amber-500"
-                                  />
-                                </div>
-
-                                {/* Giá bán */}
-                                <div>
-                                  <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
-                                    Giá bán{" "}
-                                    <span className="text-rose-500">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={14}
-                                    value={item.amountStr}
-                                    onChange={(e) =>
-                                      handleUpdateComboItem(
-                                        idx,
-                                        "amountStr",
-                                        e.target.value
-                                          .replace(/\D/g, "")
-                                          .slice(0, 14),
-                                      )
-                                    }
-                                    placeholder="0"
-                                    required
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-xs text-right outline-none focus:ring-1 focus:ring-indigo-500"
-                                  />
-                                </div>
-
-                                {/* Tiền ship */}
-                                <div>
-                                  <label className="block text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase mb-0.5">
-                                    Tiền ship
-                                  </label>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={14}
-                                    value={item.shippingFeeStr}
-                                    onChange={(e) =>
-                                      handleUpdateComboItem(
-                                        idx,
-                                        "shippingFeeStr",
-                                        e.target.value
-                                          .replace(/\D/g, "")
-                                          .slice(0, 14),
-                                      )
-                                    }
-                                    placeholder="0"
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-blue-500"
-                                  />
-                                </div>
-
-                                {/* Khách đã trả / cọc */}
-                                <div>
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <label className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">
-                                      Đã trả / cọc
+                              {/* Hàng 3: 5 trường tài chính độc lập cho món này (Giá gốc, Giá bán, Ship TQ-VN, Ship khách, Đã cọc) */}
+                              <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/50 space-y-1.5">
+                                <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider block">
+                                  💰 Chi phí & Giá món #{idx + 1}
+                                </span>
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                                  {/* Giá gốc / Vốn */}
+                                  <div>
+                                    <label className="block text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase mb-0.5">
+                                      Giá gốc / Vốn
                                     </label>
-                                    {parseFormattedNumber(item.amountStr) >
-                                      0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleUpdateComboItem(
-                                            idx,
-                                            "paidAmountStr",
-                                            item.amountStr,
-                                          )
-                                        }
-                                        className="text-[9px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold cursor-pointer"
-                                      >
-                                        Đủ
-                                      </button>
-                                    )}
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={14}
+                                      value={item.costPriceStr}
+                                      onChange={(e) =>
+                                        handleUpdateComboItem(
+                                          idx,
+                                          "costPriceStr",
+                                          e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 14),
+                                        )
+                                      }
+                                      placeholder="0"
+                                      className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-amber-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-amber-500"
+                                    />
                                   </div>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={14}
-                                    value={item.paidAmountStr}
-                                    onChange={(e) =>
-                                      handleUpdateComboItem(
-                                        idx,
-                                        "paidAmountStr",
-                                        e.target.value
-                                          .replace(/\D/g, "")
-                                          .slice(0, 14),
-                                      )
-                                    }
-                                    placeholder="0"
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-emerald-500"
+
+                                  {/* Giá bán */}
+                                  <div>
+                                    <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                                      Giá bán{" "}
+                                      <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={14}
+                                      value={item.amountStr}
+                                      onChange={(e) =>
+                                        handleUpdateComboItem(
+                                          idx,
+                                          "amountStr",
+                                          e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 14),
+                                        )
+                                      }
+                                      placeholder="0"
+                                      required
+                                      className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-xs text-right outline-none focus:ring-1 focus:ring-indigo-500"
+                                    />
+                                  </div>
+
+                                  {/* Ship Trung - Việt */}
+                                  <div>
+                                    <label className="block text-[10px] font-semibold text-orange-600 dark:text-orange-400 uppercase mb-0.5">
+                                      Ship TQ - VN
+                                    </label>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={14}
+                                      value={item.shippingFeeCnVnStr}
+                                      onChange={(e) =>
+                                        handleUpdateComboItem(
+                                          idx,
+                                          "shippingFeeCnVnStr",
+                                          e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 14),
+                                        )
+                                      }
+                                      placeholder="0"
+                                      className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-orange-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-orange-500"
+                                    />
+                                  </div>
+
+                                  {/* Tiền ship khách */}
+                                  <div>
+                                    <label className="block text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase mb-0.5">
+                                      Ship khách
+                                    </label>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={14}
+                                      value={item.shippingFeeStr}
+                                      onChange={(e) =>
+                                        handleUpdateComboItem(
+                                          idx,
+                                          "shippingFeeStr",
+                                          e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 14),
+                                        )
+                                      }
+                                      placeholder="0"
+                                      className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                  </div>
+
+                                  {/* Khách đã trả / cọc */}
+                                  <div className="col-span-2 sm:col-span-1">
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <label className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">
+                                        Đã trả/cọc
+                                      </label>
+                                      {parseFormattedNumber(item.amountStr) >
+                                        0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleUpdateComboItem(
+                                              idx,
+                                              "paidAmountStr",
+                                              item.amountStr,
+                                            )
+                                          }
+                                          className="text-[9px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold cursor-pointer"
+                                        >
+                                          Đủ
+                                        </button>
+                                      )}
+                                    </div>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={14}
+                                      value={item.paidAmountStr}
+                                      onChange={(e) =>
+                                        handleUpdateComboItem(
+                                          idx,
+                                          "paidAmountStr",
+                                          e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 14),
+                                        )
+                                      }
+                                      placeholder="0"
+                                      className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-500 font-bold text-xs text-right outline-none focus:ring-1 focus:ring-emerald-500"
                                   />
                                 </div>
                               </div>
@@ -2162,8 +2343,38 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 <>
                   {/* Thông tin sản phẩm lô chung */}
                   <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2">
+                    {isEditing ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Tên sản phẩm
+                            <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Ví dụ: Giày Sneaker MLB Chunky NY, Áo phao Zara đợt 1..."
+                            required
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Mã đơn hàng
+                          </label>
+                          <input
+                            type="text"
+                            value={orderCode}
+                            onChange={(e) => setOrderCode(e.target.value)}
+                            placeholder="DH-0001"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm focus:ring-2 focus:ring-emerald-500/40 outline-none"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                           Tên sản phẩm
                           <span className="text-rose-500">*</span>
@@ -2177,20 +2388,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-emerald-500/40 outline-none"
                         />
                       </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                          Mã đơn hàng
-                        </label>
-                        <input
-                          type="text"
-                          value={orderCode}
-                          onChange={(e) => setOrderCode(e.target.value)}
-                          placeholder="Tự động tạo (DH-0001)"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/40 outline-none"
-                        />
-                      </div>
-                    </div>
+                    )}
 
                     {/* Hàng 2: Giá gốc (giá nhập) & Giá bán ra */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2499,7 +2697,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
 
               {/* BẢNG TỔNG KẾT TÀI CHÍNH & LỢI NHUẬN DỰ KIẾN */}
               <div className="p-4 rounded-2xl bg-gradient-to-tr from-slate-50 to-slate-100 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200 dark:border-slate-700/80 space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">
                       Tổng Doanh Thu
@@ -2518,13 +2716,21 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                      Phí Ship
+                      Ship Khách
                     </span>
                     <span className="font-extrabold text-xs sm:text-sm text-blue-500">
                       {formatVND(calculatedShippingFee)}
                     </span>
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                      Ship TQ - VN
+                    </span>
+                    <span className="font-extrabold text-xs sm:text-sm text-orange-500">
+                      {formatVND(calculatedShippingFeeCnVn)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">
                       Lợi Nhuận Dự Kiến
                     </span>
@@ -2927,7 +3133,34 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
-                        Tiền ship (cho khách)
+                        Ship TQ - VN
+                      </label>
+                      {parseFormattedNumber(custShippingFeeCnVnStr) > 0 && (
+                        <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded-md">
+                          {formatVND(parseFormattedNumber(custShippingFeeCnVnStr))}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={14}
+                      value={custShippingFeeCnVnStr}
+                      onChange={(e) => {
+                        const val = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 14);
+                        setCustShippingFeeCnVnStr(val);
+                      }}
+                      placeholder="0"
+                      className="w-full h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none text-orange-500 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
+                        Ship khách (VN)
                       </label>
                       {parseFormattedNumber(custShippingFeeStr) > 0 && (
                         <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
