@@ -782,11 +782,40 @@ export class OrdersService implements OnApplicationBootstrap {
   }
 
   async create(userId: string, dto: CreateOrderDto) {
-    const count = await this.orderModel.countDocuments({ userId: new Types.ObjectId(userId) });
-    const orderCode =
-      dto.orderCode && dto.orderCode.trim()
-        ? dto.orderCode.trim()
-        : `DH-${String(count + 1).padStart(4, '0')}`;
+    const userObjId = new Types.ObjectId(userId);
+    let orderCode = dto.orderCode && dto.orderCode.trim() ? dto.orderCode.trim() : '';
+
+    if (!orderCode) {
+      const recentOrders = await this.orderModel
+        .find({ userId: userObjId, orderCode: { $regex: /^DH-\d+$/ } })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .select('orderCode')
+        .lean()
+        .exec();
+
+      let maxNum = 0;
+      for (const ord of recentOrders) {
+        const match = ord.orderCode?.match(/^DH-(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+
+      if (maxNum === 0) {
+        const count = await this.orderModel.countDocuments({ userId: userObjId });
+        maxNum = count;
+      }
+
+      let nextNum = maxNum + 1;
+      let candidateCode = `DH-${String(nextNum).padStart(4, '0')}`;
+      while (await this.orderModel.exists({ userId: userObjId, orderCode: candidateCode })) {
+        nextNum++;
+        candidateCode = `DH-${String(nextNum).padStart(4, '0')}`;
+      }
+      orderCode = candidateCode;
+    }
 
     const isOrderCompleted = dto.status === OrderStatus.COMPLETED;
 

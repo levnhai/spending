@@ -137,6 +137,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   const [uploadingItemIdx, setUploadingItemIdx] = useState<number | null>(null);
   const [previewFullImage, setPreviewFullImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSubmittingRef = useRef(false);
 
   // Thông tin khách hàng (dành cho SINGLE_ITEM & CUSTOMER_ITEMS)
   const [singleCustName, setSingleCustName] = useState("");
@@ -686,19 +687,28 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
   // Submit Order Form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || loading) return;
+    isSubmittingRef.current = true;
+    setLoading(true);
     setError("");
 
     if (orderMode === "SINGLE_ITEM") {
       if (!singleCustName.trim()) {
         setError("Vui lòng nhập họ và tên khách hàng");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
       if (!singleCustAddress.trim()) {
         setError("Vui lòng nhập địa chỉ nhận hàng của khách (bắt buộc)");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
       if (!title.trim()) {
         setError("Vui lòng nhập tên sản phẩm / món hàng");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
       if (
@@ -706,29 +716,41 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
         parseFormattedNumber(singleItemAmountStr) <= 0
       ) {
         setError("Vui lòng nhập giá bán sản phẩm");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
     } else if (orderMode === "CUSTOMER_ITEMS") {
       if (!singleCustName.trim()) {
         setError("Vui lòng nhập họ và tên khách hàng");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
       if (!singleCustAddress.trim()) {
         setError("Vui lòng nhập địa chỉ nhận hàng của khách (bắt buộc)");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
       const validItems = comboItems.filter((it) => it.name.trim());
       if (validItems.length === 0) {
         setError("Vui lòng nhập tên ít nhất 1 món hàng cho khách");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
     } else {
       if (!title.trim()) {
         setError("Vui lòng nhập tên sản phẩm lô / đợt gom");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
       if (groupCustomers.length === 0) {
         setError("Vui lòng thêm ít nhất 1 khách hàng vào đợt gom order");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
     }
@@ -798,104 +820,78 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
           };
         } else if (orderMode === "CUSTOMER_ITEMS") {
           const validItems = comboItems.filter((it) => it.name.trim());
-          const totalAmt = validItems.reduce(
-            (sum, it) => sum + parseFormattedNumber(it.amountStr),
-            0,
-          );
-          const totalCost = validItems.reduce(
-            (sum, it) => sum + parseFormattedNumber(it.costPriceStr),
-            0,
-          );
-          const totalShip = validItems.reduce(
-            (sum, it) => sum + parseFormattedNumber(it.shippingFeeStr),
-            0,
-          );
-          const totalShipCnVn = validItems.reduce(
-            (sum, it) => sum + parseFormattedNumber(it.shippingFeeCnVnStr),
-            0,
-          );
-          const totalPaid = validItems.reduce(
-            (sum, it) => sum + parseFormattedNumber(it.paidAmountStr),
-            0,
-          );
-          let pStatus: PaymentStatusType = "UNPAID";
-          if (totalPaid >= totalAmt && totalAmt > 0) pStatus = "PAID";
-          else if (totalPaid > 0) pStatus = "PARTIAL";
-
-          const isOrderCompleted = orderToEdit.status === "COMPLETED";
+          const comboTitle =
+            title.trim() ||
+            validItems.map((it) => it.name.trim()).join(" + ") ||
+            "Combo đơn hàng";
 
           updatePayload = {
-            title: validItems[0]?.name || title.trim(),
+            title: comboTitle,
             orderCode: orderCode.trim() || undefined,
-            size: validItems[0]?.size?.trim() || undefined,
-            color: validItems[0]?.color?.trim() || undefined,
-            imageUrl:
-              validItems.find((it) => it.imageUrl)?.imageUrl ||
-              imageUrl.trim() ||
-              undefined,
-            costPrice: totalCost,
-            shippingFee: totalShip,
-            shippingFeeCnVn: totalShipCnVn,
+            imageUrl: imageUrl.trim() || undefined,
+            costPrice: calculatedCostPrice,
+            shippingFee: calculatedShippingFee,
+            shippingFeeCnVn: calculatedShippingFeeCnVn,
             customerName: singleCustName.trim(),
             customerPhone: singleCustPhone.trim() || undefined,
             customerAddress: singleCustAddress.trim() || undefined,
             address: singleCustAddress.trim() || undefined,
             customerFacebookUrl: singleCustFacebook.trim() || undefined,
             facebookUrl: singleCustFacebook.trim() || undefined,
-            totalAmount: totalAmt,
-            paidAmount: isOrderCompleted ? totalAmt : totalPaid,
-            paymentStatus: isOrderCompleted ? "PAID" : pStatus,
-            status: orderToEdit.status || "ORDERED",
+            totalAmount: calculatedTotalAmount,
+            paidAmount: calculatedPaidAmount,
+            status: orderToEdit.status,
             orderDate: finalDateISO,
             customers: validItems.map((it) => {
               const itAmt = parseFormattedNumber(it.amountStr);
+              const itCost = parseFormattedNumber(it.costPriceStr);
+              const itShip = parseFormattedNumber(it.shippingFeeStr);
+              const itShipCnVn = parseFormattedNumber(it.shippingFeeCnVnStr);
               const itPaid = parseFormattedNumber(it.paidAmountStr);
+              const itQty = Math.max(1, parseInt(it.quantityStr) || 1);
+
+              let pStatus: PaymentStatusType = "UNPAID";
+              if (itPaid >= itAmt && itAmt > 0) pStatus = "PAID";
+              else if (itPaid > 0) pStatus = "PARTIAL";
+
               return {
-                name: it.name.trim(),
+                name: singleCustName.trim(),
                 phone: singleCustPhone.trim() || undefined,
                 facebookUrl: singleCustFacebook.trim() || undefined,
                 address: singleCustAddress.trim() || undefined,
                 size: it.size.trim() || undefined,
                 color: it.color.trim() || undefined,
                 imageUrl: it.imageUrl?.trim() || undefined,
-                quantity: Math.max(1, parseInt(it.quantityStr) || 1),
+                quantity: itQty,
                 amount: itAmt,
-                paidAmount: isOrderCompleted ? itAmt : itPaid,
-                shippingFee: parseFormattedNumber(it.shippingFeeStr),
-                shippingFeeCnVn: parseFormattedNumber(it.shippingFeeCnVnStr),
-                costPrice: parseFormattedNumber(it.costPriceStr),
-                paymentStatus: isOrderCompleted
-                  ? "PAID"
-                  : itPaid >= itAmt && itAmt > 0
-                    ? "PAID"
-                    : itPaid > 0
-                      ? "PARTIAL"
-                      : "UNPAID",
-                status: orderToEdit.status || "ORDERED",
+                paidAmount: itPaid,
+                costPrice: itCost,
+                shippingFee: itShip,
+                shippingFeeCnVn: itShipCnVn,
+                paymentStatus: pStatus,
+                status: "ORDERED",
                 orderDate: finalDateISO,
-                note: it.note.trim() || undefined,
+                note: it.note.trim() || it.name.trim(),
               };
             }),
           };
         } else {
+          // GROUP_ORDER CẬP NHẬT
           updatePayload = {
             title: title.trim(),
             orderCode: orderCode.trim() || undefined,
             size: size.trim() || undefined,
             color: color.trim() || undefined,
             imageUrl: imageUrl.trim() || undefined,
-            costPrice: costPrice,
-            shippingFee: shippingFee,
+            costPrice: calculatedCostPrice,
+            shippingFee: calculatedShippingFee,
             shippingFeeCnVn: calculatedShippingFeeCnVn,
             totalAmount: calculatedTotalAmount,
             paidAmount: calculatedPaidAmount,
-            status: orderToEdit.status || "ORDERED",
-            orderDate: finalDateISO,
             customers: groupCustomers.map((c) => ({
               ...c,
-              size: c.size?.trim() || size.trim() || undefined,
-              color: c.color?.trim() || color.trim() || undefined,
-              imageUrl: c.imageUrl?.trim() || undefined,
+              amount: Number(c.amount) || 0,
+              paidAmount: Number(c.paidAmount) || 0,
               shippingFee: Number(c.shippingFee) || 0,
               shippingFeeCnVn: Number(c.shippingFeeCnVn) || 0,
               costPrice: Number(c.costPrice) || 0,
@@ -977,15 +973,23 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             };
           });
 
-          await Promise.all(payloads.map((p) => orderApi.create(p)));
+          for (const p of payloads) {
+            await orderApi.create(p);
+          }
         } else if (orderMode === "GROUP_ORDER") {
+          // GOM NHIỀU KHÁCH: TÁCH MỖI KHÁCH HÀNG THÀNH 1 ĐƠN HÀNG RIÊNG BIỆT
           const unitCost = parseFormattedNumber(groupCostPriceStr);
           const payloads: CreateOrderPayload[] = groupCustomers.map(
             (c, idx) => {
               const cAmt = Number(c.amount) || 0;
               const cPaid = Number(c.paidAmount) || 0;
               const cQty = Number(c.quantity) || 1;
-              const cCost = unitCost > 0 ? unitCost * cQty : (Number(c.costPrice) || 0);
+              const cCost =
+                (Number(c.costPrice) || 0) > 0
+                  ? Number(c.costPrice) || 0
+                  : unitCost > 0
+                    ? unitCost * cQty
+                    : 0;
 
               const cShip = Number(c.shippingFee) || 0;
               const cShipCnVn = Number(c.shippingFeeCnVn) || 0;
@@ -1005,8 +1009,8 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                     ? `${orderCode.trim()}-${idx + 1}`
                     : orderCode.trim()
                   : undefined,
-                size: c.size?.trim() || undefined,
-                color: c.color?.trim() || undefined,
+                size: c.size?.trim() || size.trim() || undefined,
+                color: c.color?.trim() || color.trim() || undefined,
                 imageUrl: c.imageUrl?.trim() || imageUrl.trim() || undefined,
                 costPrice: cCost,
                 shippingFee: cShip,
@@ -1025,21 +1029,33 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                 note: c.note?.trim() || undefined,
                 customers: [
                   {
-                    ...c,
+                    name: c.name.trim(),
+                    phone: c.phone?.trim() || undefined,
+                    facebookUrl: c.facebookUrl?.trim() || undefined,
+                    address: c.address?.trim() || undefined,
+                    size: c.size?.trim() || size.trim() || undefined,
+                    color: c.color?.trim() || color.trim() || undefined,
+                    imageUrl: c.imageUrl?.trim() || imageUrl.trim() || undefined,
+                    quantity: cQty,
+                    amount: cAmt,
+                    paidAmount: cPaid,
                     costPrice: cCost,
                     shippingFee: cShip,
                     shippingFeeCnVn: cShipCnVn,
-                    size: c.size?.trim() || undefined,
-                    color: c.color?.trim() || undefined,
-                    imageUrl: c.imageUrl?.trim() || undefined,
+                    paymentStatus: pStatus,
+                    status: c.status || "ORDERED",
                     orderDate: custDate,
+                    note: c.note?.trim() || undefined,
                   },
                 ],
               };
             },
           );
 
-          await Promise.all(payloads.map((p) => orderApi.create(p)));
+          // Tạo tuần tự từng đơn để backend gán mã đơn hàng tăng dần và không bị xung đột
+          for (const p of payloads) {
+            await orderApi.create(p);
+          }
         } else {
           // SINGLE_ITEM: 1 Đơn lẻ
           const itemAmount = parseFormattedNumber(singleItemAmountStr);
@@ -1106,6 +1122,7 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
         err?.response?.data?.message || "Có lỗi xảy ra khi lưu đơn hàng",
       );
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
