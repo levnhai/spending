@@ -1134,21 +1134,21 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
       {/* ============================================================ */}
       {!isEditing && modalStep === "SELECT_MODE" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0b1329] sm:bg-[#0d1527] w-full max-w-3xl rounded-3xl border border-slate-800/90 shadow-2xl overflow-hidden p-6 sm:p-8 space-y-6 animate-in zoom-in-95 duration-150 text-white">
+          <div className="bg-[#0b1329] sm:bg-[#0d1527] w-full max-w-3xl rounded-2xl sm:rounded-3xl border border-slate-800/90 shadow-2xl overflow-y-auto max-h-[92vh] p-4 sm:p-8 space-y-4 sm:space-y-6 animate-in zoom-in-95 duration-150 text-white">
             {/* Modal Header */}
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-extrabold text-lg sm:text-2xl text-white tracking-tight flex items-center gap-2">
                   <span>Chọn loại hình đơn hàng</span>
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1">
                   Lựa chọn hình thức tạo đơn phù hợp với đợt bán hàng của bạn
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
                 title="Đóng"
               >
                 <X className="w-5 h-5" />
@@ -1156,33 +1156,38 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
             </div>
 
             {/* 3 LỰA CHỌN DẠNG THẺ */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1">
               {/* Thẻ 1: 1 Khách - 1 Sản Phẩm (Đơn lẻ nhanh) */}
               <div
                 onClick={() => {
                   setOrderMode("SINGLE_ITEM");
                   setModalStep("FORM");
                 }}
-                className="group relative rounded-3xl p-5 border border-cyan-500/30 hover:border-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4 shadow-lg hover:shadow-cyan-500/10 hover:-translate-y-1"
+                className="group relative rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-cyan-500/30 hover:border-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 sm:gap-4 shadow-lg hover:shadow-cyan-500/10 hover:-translate-y-1 active:scale-[0.99]"
               >
-                <div className="space-y-3">
-                  <div className="w-11 h-11 rounded-2xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyan-500/25 transition-all">
+                <div className="flex sm:flex-col items-start gap-3 sm:gap-3">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyan-500/25 transition-all shrink-0">
                     <Zap className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h4 className="font-bold text-base text-white group-hover:text-cyan-300 transition-colors">
-                      1 Khách - 1 Sản phẩm
-                    </h4>
-                    <p className="text-[11px] text-cyan-400/80 font-semibold mt-0.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between sm:block gap-1">
+                      <h4 className="font-bold text-sm sm:text-base text-white group-hover:text-cyan-300 transition-colors">
+                        1 Khách - 1 Sản phẩm
+                      </h4>
+                      <span className="sm:hidden text-[10px] text-cyan-400 font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+                        5 giây
+                      </span>
+                    </div>
+                    <p className="hidden sm:block text-[11px] text-cyan-400/80 font-semibold mt-0.5">
                       Đơn lẻ nhanh (5 giây)
                     </p>
-                    <p className="text-xs text-slate-300/80 leading-relaxed mt-2">
+                    <p className="text-[11.5px] sm:text-xs text-slate-300/80 leading-relaxed mt-1 sm:mt-2">
                       Bán lẻ 1 món duy nhất cho 1 khách hàng. Điền trực tiếp
                       trên 1 màn hình.
                     </p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-cyan-500/20 flex items-center justify-between text-xs font-bold text-cyan-400 group-hover:text-cyan-300">
+                <div className="pt-2.5 sm:pt-3 border-t border-cyan-500/20 flex items-center justify-between text-xs font-bold text-cyan-400 group-hover:text-cyan-300">
                   <span>Tạo đơn 1 món</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                 </div>
@@ -1194,26 +1199,31 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   setOrderMode("CUSTOMER_ITEMS");
                   setModalStep("FORM");
                 }}
-                className="group relative rounded-3xl p-5 border border-indigo-500/30 hover:border-indigo-400 bg-indigo-950/20 hover:bg-indigo-950/40 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4 shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1"
+                className="group relative rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-indigo-500/30 hover:border-indigo-400 bg-indigo-950/20 hover:bg-indigo-950/40 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 sm:gap-4 shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1 active:scale-[0.99]"
               >
-                <div className="space-y-3">
-                  <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/25 transition-all">
+                <div className="flex sm:flex-col items-start gap-3 sm:gap-3">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/25 transition-all shrink-0">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h4 className="font-bold text-base text-white group-hover:text-indigo-300 transition-colors">
-                      1 Khách - Nhiều SP
-                    </h4>
-                    <p className="text-[11px] text-indigo-400/80 font-semibold mt-0.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between sm:block gap-1">
+                      <h4 className="font-bold text-sm sm:text-base text-white group-hover:text-indigo-300 transition-colors">
+                        1 Khách - Nhiều SP
+                      </h4>
+                      <span className="sm:hidden text-[10px] text-indigo-400 font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 shrink-0">
+                        Combo
+                      </span>
+                    </div>
+                    <p className="hidden sm:block text-[11px] text-indigo-400/80 font-semibold mt-0.5">
                       Đơn Combo / Nhiều món
                     </p>
-                    <p className="text-xs text-slate-300/80 leading-relaxed mt-2">
+                    <p className="text-[11.5px] sm:text-xs text-slate-300/80 leading-relaxed mt-1 sm:mt-2">
                       1 khách đặt mua nhiều món (Áo, Quần, Giày...) với hình
                       ảnh, size và giá riêng.
                     </p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-indigo-500/20 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
+                <div className="pt-2.5 sm:pt-3 border-t border-indigo-500/20 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
                   <span>Tạo đơn Combo</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                 </div>
@@ -1225,26 +1235,31 @@ export const AddEditOrderModal: React.FC<AddEditOrderModalProps> = ({
                   setOrderMode("GROUP_ORDER");
                   setModalStep("FORM");
                 }}
-                className="group relative rounded-3xl p-5 border border-emerald-500/30 hover:border-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/40 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4 shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-1"
+                className="group relative rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-emerald-500/30 hover:border-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/40 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 sm:gap-4 shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-1 active:scale-[0.99]"
               >
-                <div className="space-y-3">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/25 transition-all">
+                <div className="flex sm:flex-col items-start gap-3 sm:gap-3">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/25 transition-all shrink-0">
                     <Box className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h4 className="font-bold text-base text-white group-hover:text-emerald-300 transition-colors">
-                      1 SP - Nhiều khách
-                    </h4>
-                    <p className="text-[11px] text-emerald-400/80 font-semibold mt-0.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between sm:block gap-1">
+                      <h4 className="font-bold text-sm sm:text-base text-white group-hover:text-emerald-300 transition-colors">
+                        1 SP - Nhiều khách
+                      </h4>
+                      <span className="sm:hidden text-[10px] text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shrink-0">
+                        Mua chung
+                      </span>
+                    </div>
+                    <p className="hidden sm:block text-[11px] text-emerald-400/80 font-semibold mt-0.5">
                       Gom Order / Mua chung
                     </p>
-                    <p className="text-xs text-slate-300/80 leading-relaxed mt-2">
+                    <p className="text-[11.5px] sm:text-xs text-slate-300/80 leading-relaxed mt-1 sm:mt-2">
                       Gom 1 mẫu/sản phẩm theo đợt cho nhiều khách cùng đăng ký
                       mua chung.
                     </p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300">
+                <div className="pt-2.5 sm:pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300">
                   <span>Tạo đợt Gom</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                 </div>

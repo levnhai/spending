@@ -32,11 +32,83 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
   const [isMounted, setIsMounted] = useState(false);
   const showAmount = useUserStore((s) => s.showAmount);
 
-  const renderAmount = (val: number) => (showAmount ? formatVND(val) : '••••••••');
+  const timelineData = stats?.timeline || [];
+  const period = stats?.period || 'all';
+
+  // Xác định mốc thời gian hiện tại (Hôm nay / Giờ này / Thứ này / Tháng này)
+  const currentPeriodLabel = React.useMemo(() => {
+    const now = new Date();
+    if (period === 'today') {
+      const h = now.getHours();
+      const slots = [
+        { label: '0h-3h', min: 0, max: 3 },
+        { label: '3h-6h', min: 3, max: 6 },
+        { label: '6h-9h', min: 6, max: 9 },
+        { label: '9h-12h', min: 9, max: 12 },
+        { label: '12h-15h', min: 12, max: 15 },
+        { label: '15h-18h', min: 15, max: 18 },
+        { label: '18h-21h', min: 18, max: 21 },
+        { label: '21h-24h', min: 21, max: 24 },
+      ];
+      return slots.find((s) => h >= s.min && h < s.max)?.label || '15h-18h';
+    }
+    if (period === 'week') {
+      const day = now.getDay();
+      const mapDays: Record<number, string> = {
+        0: 'Chủ Nhật',
+        1: 'Thứ 2',
+        2: 'Thứ 3',
+        3: 'Thứ 4',
+        4: 'Thứ 5',
+        5: 'Thứ 6',
+        6: 'Thứ 7',
+      };
+      return mapDays[day] || 'Thứ 2';
+    }
+    if (period === 'month') {
+      return `N${now.getDate()}`;
+    }
+    if (period === 'year') {
+      return `Tháng ${now.getMonth() + 1}`;
+    }
+    return '';
+  }, [period]);
+
+  const currentIndex = React.useMemo(() => {
+    if (!currentPeriodLabel || !timelineData.length) return -1;
+    return timelineData.findIndex((d) => d.label === currentPeriodLabel);
+  }, [currentPeriodLabel, timelineData]);
+
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Hàm tự động cuộn lấy ngày hiện tại làm trọng tâm giữa màn hình
+  const scrollToCurrent = React.useCallback(() => {
+    if (!scrollContainerRef.current || currentIndex < 0 || timelineData.length <= 10) return;
+    const container = scrollContainerRef.current;
+    const totalWidth = Math.max(timelineData.length * 38, 480);
+    const itemWidth = totalWidth / timelineData.length;
+    const targetCenter = (currentIndex + 0.5) * itemWidth;
+    const scrollLeft = Math.max(0, targetCenter - container.clientWidth / 2);
+
+    container.scrollTo({
+      left: scrollLeft,
+      behavior: 'smooth',
+    });
+  }, [currentIndex, timelineData.length]);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    const timer = setTimeout(() => {
+      scrollToCurrent();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [isMounted, scrollToCurrent]);
+
+  const renderAmount = (val: number) => (showAmount ? formatVND(val) : '••••••••');
 
   if (!isMounted) {
     return (
@@ -128,10 +200,6 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
 
   const totalStatusCount = statusPieData.reduce((sum, item) => sum + item.value, 0);
 
-  // 3. Dữ liệu Biểu đồ Cột: Lợi Nhuận Theo Dòng Thời Gian (Timeline Bar Chart)
-  const timelineData = stats?.timeline || [];
-  const period = stats?.period || 'all';
-
   const getTimelineSubtitle = () => {
     switch (period) {
       case 'today':
@@ -156,129 +224,240 @@ export const SalesChartsSection: React.FC<SalesChartsSectionProps> = ({ stats })
     return `${val}`;
   };
 
+  // Format nhãn trục X chỉ hiển thị số (1, 2, 3... 12 hoặc 1, 2, 3... 31)
+  const formatDisplayLabel = (label: any) => {
+    if (!label) return '';
+    const str = String(label);
+    if (str.startsWith('Tháng ')) return str.replace('Tháng ', '');
+    if (/^N\d+$/i.test(str)) return str.substring(1);
+    return str;
+  };
+
+  const getFullTooltipTitle = (label?: string | number) => {
+    if (label == null) return '';
+    const str = String(label);
+    if (/^N\d+$/i.test(str)) return `Ngày ${str.substring(1)}`;
+    return str;
+  };
+
+  // Custom Tick Trục X làm nổi bật mốc ngày hiện tại
+  const CustomXAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const isCurrent = payload.value === currentPeriodLabel;
+    const displayLabel = formatDisplayLabel(payload.value);
+
+    return (
+      <g transform={`translate(${x},${y})`}>
+        {isCurrent && (
+          <rect
+            x={-11}
+            y={2}
+            width={22}
+            height={16}
+            rx={4}
+            fill="#10B981"
+            opacity={0.25}
+          />
+        )}
+        <text
+          x={0}
+          y={14}
+          textAnchor="middle"
+          fill={isCurrent ? '#34D399' : '#64748B'}
+          fontWeight={isCurrent ? '800' : '500'}
+          fontSize={isCurrent ? 11 : 10}
+        >
+          {displayLabel}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* ================= BIỂU ĐỒ CỘT: LỢI NHUẬN THEO THỜI GIAN ================= */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-2xl bg-emerald-500/10 text-emerald-500">
-              <BarChart3 className="w-5 h-5" />
+      <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-500 shrink-0">
+              <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
                 Biến Động Lợi Nhuận
-                <span className="text-xs px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20">
-                  {renderAmount(profit)}
-                </span>
               </h3>
-              <p className="text-xs text-slate-400">{getTimelineSubtitle()}</p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+                {getTimelineSubtitle()}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
-              <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block" />
-              <span>Lợi Nhuận</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-400 font-medium ml-2">
-              <span className="w-3 h-3 rounded-md bg-blue-500/30 inline-block" />
-              <span>Doanh Thu</span>
-            </div>
+          {/* Badge Giá Tiền luôn luôn sát lề bên phải */}
+          <div className="shrink-0 text-right">
+            <span className="text-xs sm:text-sm px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20 whitespace-nowrap shadow-xs inline-block">
+              {renderAmount(profit)}
+            </span>
           </div>
         </div>
 
-        {/* Recharts Bar Chart */}
-        <div className="h-64 sm:h-72 w-full pt-2">
+        {/* Recharts Bar Chart với Scroll Ngang & Focus Trọng Tâm */}
+        <div className="w-full pt-2">
           {timelineData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-400 text-xs">
+            <div className="h-64 sm:h-72 flex items-center justify-center text-slate-400 text-xs">
               Chưa có dữ liệu thống kê trong kỳ này
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={timelineData}
-                margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+            <div
+              ref={scrollContainerRef}
+              className="overflow-x-auto no-scrollbar -mx-2 px-2 scroll-smooth"
+            >
+              <div
+                style={{
+                  minWidth:
+                    timelineData.length > 10
+                      ? `${Math.max(timelineData.length * 38, 480)}px`
+                      : '100%',
+                }}
+                className="h-64 sm:h-76 w-full"
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#334155"
-                  opacity={0.25}
-                />
-                <XAxis
-                  dataKey="label"
-                  stroke="#64748B"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: '#334155', opacity: 0.3 }}
-                />
-                <YAxis
-                  stroke="#64748B"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={formatYAxis}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255, 255, 255, 0.05)', radius: 8 }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="p-3 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl text-xs space-y-1.5 min-w-[170px]">
-                          <p className="font-bold text-white border-b border-slate-800 pb-1 flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>{label}</span>
-                          </p>
-                          <div className="flex items-center justify-between text-slate-300">
-                            <span>Doanh thu:</span>
-                            <strong className="font-bold text-blue-400">{renderAmount(data.revenue)}</strong>
-                          </div>
-                          <div className="flex items-center justify-between text-slate-300">
-                            <span>Tiền vốn:</span>
-                            <span className="font-medium text-amber-400">{renderAmount(data.cost)}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-slate-300">
-                            <span>Phí ship:</span>
-                            <span className="font-medium text-purple-400">{renderAmount(data.shipping)}</span>
-                          </div>
-                          <div className="flex items-center justify-between pt-1 border-t border-slate-800">
-                            <span className="font-bold text-slate-200">Lợi Nhuận:</span>
-                            <strong
-                              className={`font-black text-sm ${
-                                data.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                              }`}
-                            >
-                              {renderAmount(data.profit)}
-                            </strong>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                {/* Cột Doanh Thu Mờ nền */}
-                <Bar
-                  dataKey="revenue"
-                  name="Doanh thu"
-                  fill="#3B82F6"
-                  opacity={0.2}
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={32}
-                />
-                {/*feat: implement order management system with status tracking and editing capabilities Cột Lợi Nhuận Chính */}
-                <Bar
-                  dataKey="profit"
-                  name="Lợi nhuận"
-                  fill="#10B981"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={32}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={timelineData}
+                    margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#334155"
+                      opacity={0.25}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      stroke="#64748B"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={{ stroke: '#334155', opacity: 0.3 }}
+                      interval={0}
+                      tick={<CustomXAxisTick />}
+                    />
+                    <YAxis
+                      stroke="#64748B"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={formatYAxis}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.05)', radius: 8 }}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          const isCurrent = label === currentPeriodLabel;
+                          return (
+                            <div className="p-3 rounded-2xl bg-slate-900/95 backdrop-blur-md border border-slate-700 shadow-2xl text-xs space-y-1.5 min-w-[170px]">
+                              <p className="font-bold text-white border-b border-slate-800 pb-1 flex items-center justify-between gap-1.5">
+                                <span className="flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>{getFullTooltipTitle(label)}</span>
+                                </span>
+                                {isCurrent && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-extrabold border border-emerald-500/30">
+                                    Hôm nay
+                                  </span>
+                                )}
+                              </p>
+                              <div className="flex items-center justify-between text-slate-300">
+                                <span>Doanh thu:</span>
+                                <strong className="font-bold text-blue-400">
+                                  {renderAmount(data.revenue)}
+                                </strong>
+                              </div>
+                              <div className="flex items-center justify-between text-slate-300">
+                                <span>Tiền vốn:</span>
+                                <span className="font-medium text-amber-400">
+                                  {renderAmount(data.cost)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-slate-300">
+                                <span>Phí ship:</span>
+                                <span className="font-medium text-purple-400">
+                                  {renderAmount(data.shipping)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+                                <span className="font-bold text-slate-200">
+                                  Lợi Nhuận:
+                                </span>
+                                <strong
+                                  className={`font-black text-sm ${
+                                    data.profit >= 0
+                                      ? 'text-emerald-400'
+                                      : 'text-rose-400'
+                                  }`}
+                                >
+                                  {renderAmount(data.profit)}
+                                </strong>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    {/* Cột Doanh Thu */}
+                    <Bar
+                      dataKey="revenue"
+                      name="Doanh thu"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={24}
+                    >
+                      {timelineData.map((entry, index) => {
+                        const isCurrent = index === currentIndex;
+                        return (
+                          <Cell
+                            key={`cell-rev-${index}`}
+                            fill={isCurrent ? '#60A5FA' : '#3B82F6'}
+                            opacity={isCurrent ? 0.6 : 0.25}
+                          />
+                        );
+                      })}
+                    </Bar>
+                    {/* Cột Lợi Nhuận Chính */}
+                    <Bar
+                      dataKey="profit"
+                      name="Lợi nhuận"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={24}
+                    >
+                      {timelineData.map((entry, index) => {
+                        const isCurrent = index === currentIndex;
+                        return (
+                          <Cell
+                            key={`cell-profit-${index}`}
+                            fill={isCurrent ? '#34D399' : '#10B981'}
+                            stroke={isCurrent ? '#6EE7B7' : undefined}
+                            strokeWidth={isCurrent ? 1.5 : 0}
+                          />
+                        );
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           )}
+        </div>
+
+        {/* Chú thích Legend nhỏ gọn đặt bên dưới biểu đồ */}
+        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-center gap-5 text-[10.5px] sm:text-xs text-slate-400 font-medium">
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span>Lợi Nhuận</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-blue-500/50 inline-block" />
+            <span>Doanh Thu</span>
+          </div>
         </div>
       </div>
 

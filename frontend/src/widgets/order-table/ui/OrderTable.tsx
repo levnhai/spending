@@ -613,31 +613,32 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   : "border-slate-200 dark:border-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
-              {/* Row 1: Top Bar (Checkbox + Mã đơn + Ngày lên đơn + Status Dropdown) */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+              {/* Row 1: Top Bar (Checkbox + (Mã đơn & Ngày) + Status Dropdown + Nút Xóa Đỏ) */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2.5 min-w-0">
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => handleToggleSelect(order._id)}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500 shrink-0"
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-500/30 bg-white dark:bg-slate-900 cursor-pointer accent-emerald-500 shrink-0 mt-0.5"
                     title={isSelected ? "Bỏ chọn" : "Chọn"}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrderDetail(order)}
-                    className="font-mono text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/20 shadow-xs shrink-0 transition-colors cursor-pointer"
-                    title="Xem chi tiết đơn hàng"
-                  >
-                    {order.orderCode}
-                  </button>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-medium truncate">
-                    <Calendar className="w-3 h-3 opacity-60 shrink-0" />
-                    {formatDate(order.orderDate || mainCustomer?.orderDate)}
-                  </span>
+                  <div className="flex flex-col items-start min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrderDetail(order)}
+                      className="font-mono text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/20 shadow-xs shrink-0 transition-colors cursor-pointer"
+                      title="Xem chi tiết đơn hàng"
+                    >
+                      {order.orderCode}
+                    </button>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
+                      {formatDate(order.orderDate || mainCustomer?.orderDate)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <OrderStatusDropdown
                     orderId={order._id}
                     currentStatus={order.status}
@@ -645,32 +646,57 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                       onStatusChanged(order._id, newStatus)
                     }
                   />
+
+                  {/* Nút Xóa Đơn Hàng Màu Đỏ Lên Trên Top Bar */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOrderToDelete({
+                        id: order._id,
+                        code: order.orderCode,
+                        title: order.title,
+                      })
+                    }
+                    className="p-1.5 rounded-xl text-rose-500 hover:text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all cursor-pointer shadow-xs"
+                    title="Xóa đơn hàng"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Row 2: Product information (Thumbnail + Title + Quantity) */}
-              <div className="flex items-start gap-3">
-                <OrderThumbnail
-                  src={order.imageUrl}
-                  alt={order.title}
-                  onClick={() => setPreviewImage(order.imageUrl || null)}
-                  className="w-12 h-12"
-                />
+              {/* Row 2: Product information & Price on Right */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <OrderThumbnail
+                    src={order.imageUrl}
+                    alt={order.title}
+                    onClick={() => setPreviewImage(order.imageUrl || null)}
+                    className="w-12 h-12"
+                  />
 
-                <div className="flex-1 min-w-0 space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrderDetail(order)}
-                    className="font-bold text-sm text-slate-900 dark:text-white leading-snug line-clamp-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer block"
-                    title="Xem chi tiết đơn hàng"
-                  >
-                    {order.title}
-                  </button>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-medium text-slate-400 dark:text-slate-400">
-                      SL: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{totalQty}</strong>
-                    </span>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrderDetail(order)}
+                      className="font-bold text-sm text-slate-900 dark:text-white leading-snug line-clamp-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer block"
+                      title="Xem chi tiết đơn hàng"
+                    >
+                      {order.title}
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                        SL: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{totalQty}</strong>
+                      </span>
+                    </div>
                   </div>
+                </div>
+
+                {/* Khối tiền đơn hàng nằm bên phải (Chỉ hiển thị giá tiền, không icon mắt, không thu/nợ) */}
+                <div className="text-right shrink-0 pt-0.5">
+                  <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-none">
+                    {renderAmount(orderTotal)}
+                  </span>
                 </div>
               </div>
 
@@ -707,64 +733,25 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 )}
               </div>
 
-              {/* Row 4: Price & Action buttons */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                <div>
-                  <div className="font-black text-base text-slate-900 dark:text-white leading-none">
-                    <AmountDisplay
-                      amount={orderTotal}
-                      className="font-black text-base text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="text-[11px] mt-1.5 flex items-center gap-1.5 flex-wrap">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                      Đã thu: {renderAmount(orderPaid)}
-                    </span>
-                    {orderRemaining > 0 ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.2 rounded bg-amber-500/10 border border-amber-500/20 text-[10px]">
-                        Nợ: {renderAmount(orderRemaining)}
-                      </span>
-                    ) : (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-medium text-[10px]">
-                        (Đã thu đủ)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrderDetail(order)}
-                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-colors flex items-center gap-1 cursor-pointer"
-                    title="Xem chi tiết đơn hàng"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Chi tiết</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onEdit(order)}
-                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    <span>Sửa</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOrderToDelete({
-                        id: order._id,
-                        code: order.orderCode,
-                        title: order.title,
-                      })
-                    }
-                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    title="Xóa đơn hàng"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+              {/* Row 4: Action buttons */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderDetail(order)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Xem chi tiết đơn hàng"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Chi tiết</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onEdit(order)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit2 className="w-3 h-3" />
+                  <span>Sửa</span>
+                </button>
               </div>
             </div>
           );
