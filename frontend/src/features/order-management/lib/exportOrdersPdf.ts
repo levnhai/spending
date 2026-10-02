@@ -17,17 +17,83 @@ export interface ExportPdfOptions {
   fileName?: string;
 }
 
-// Tải ảnh an toàn để vẽ lên canvas
-async function loadSafeImage(url?: string): Promise<HTMLImageElement | null> {
-  if (!url) return null;
-  const fullUrl = getFullImageUrl(url);
+/**
+ * Loại bỏ thông tin địa chỉ (Đ/C:, dc:, Địa chỉ:) khỏi dòng ghi chú sản phẩm
+ */
+export function cleanProductNote(note?: string): string {
+  if (!note) return '';
+  const trimmed = note.trim();
+  // Nếu ghi chú bắt đầu bằng tiền tố địa chỉ
+  if (/^(?:đ\/c|dc|địa chỉ)[:\s]/i.test(trimmed)) {
+    return '';
+  }
+  // Loại bỏ các đoạn địa chỉ đính kèm ở đuôi
+  const cleaned = trimmed
+    .replace(/(?:^|\s*[-–•|,]\s*)(?:đ\/c|dc|địa chỉ)[:\s][^,\n]*/gi, '')
+    .trim();
+  return cleaned;
+}
+
+// Helper chuyển Blob sang Base64 Data URL
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function createImageElement(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = fullUrl;
+    img.src = src;
   });
+}
+
+// Tải ảnh an toàn (Base64) để vẽ lên canvas 100% không bị lỗi CORS hay Tainted Canvas
+async function loadSafeImage(url?: string): Promise<HTMLImageElement | null> {
+  if (!url) return null;
+  const fullUrl = getFullImageUrl(url);
+  if (!fullUrl) return null;
+
+  // 1. Nếu đã là chuỗi Data URL Base64
+  if (fullUrl.startsWith('data:image/')) {
+    return createImageElement(fullUrl);
+  }
+
+  // 2. Thử fetch trực tiếp với query timestamp để bypass HTTP Disk Cache của trình duyệt
+  try {
+    const sep = fullUrl.includes('?') ? '&' : '?';
+    const directUrl = `${fullUrl}${sep}t=${Date.now()}`;
+    const res = await fetch(directUrl, { mode: 'cors' });
+    if (res.ok) {
+      const blob = await res.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      return await createImageElement(dataUrl);
+    }
+  } catch {
+    // Tiếp tục thử cách qua proxy
+  }
+
+  // 3. Nếu fetch trực tiếp bị chặn CORS (ảnh từ domain ngoài hoặc Cloudinary cache), dùng API proxy
+  try {
+    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(fullUrl)}`;
+    const res = await fetch(proxyUrl);
+    if (res.ok) {
+      const blob = await res.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      return await createImageElement(dataUrl);
+    }
+  } catch {
+    // Tiếp tục fallback
+  }
+
+  // 4. Fallback cuối cùng: tải qua Image với crossOrigin anonymous
+  return createImageElement(fullUrl);
 }
 
 function drawRoundedRect(
@@ -81,7 +147,7 @@ async function renderReceiptToCanvas(
         stt: index + 1,
         code: order.orderCode,
         title: order.title,
-        note: order.note || cust?.note || '',
+        note: cleanProductNote(order.note || cust?.note),
         image: loadedImg,
         qty,
         unitPrice,
@@ -231,13 +297,15 @@ async function renderReceiptToCanvas(
 
     ctx.fillStyle = '#059669';
     ctx.font = 'bold 10.5px monospace, monospace';
-    ctx.fillText(`[${item.code}]`, 90, rowY + 42);
+    const codeText = `[${item.code}]`;
+    ctx.fillText(codeText, 90, rowY + 42);
 
     if (item.note) {
+      const codeWidth = ctx.measureText(codeText).width;
       ctx.fillStyle = '#64748b';
       ctx.font = 'italic 10px system-ui, -apple-system, sans-serif';
-      const cleanNote = item.note.length > 30 ? item.note.substring(0, 30) + '...' : item.note;
-      ctx.fillText(`• ${cleanNote}`, 165, rowY + 42);
+      const cleanNote = item.note.length > 24 ? item.note.substring(0, 24) + '...' : item.note;
+      ctx.fillText(`• ${cleanNote}`, 90 + codeWidth + 8, rowY + 42);
     }
 
     // Ảnh sản phẩm
@@ -355,7 +423,7 @@ async function renderReceiptToCanvas(
   ctx.fillStyle = '#e11d48';
   ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('Còn nợ / Thu khi nhận:', statBoxX + 16, summaryBoxY + 122);
+  ctx.fillText('Còn nợ :', statBoxX + 16, summaryBoxY + 122);
   ctx.textAlign = 'right';
   ctx.fillText(formatVND(totalRemaining), statBoxX + statBoxW - 16, summaryBoxY + 122);
 
@@ -386,16 +454,17 @@ export async function exportOrdersPdf(options: ExportPdfOptions): Promise<void> 
   if (orders.length === 0) return;
 
   let canvas: HTMLCanvasElement;
+  let imgData: string;
   try {
-    // Thử render có ảnh sản phẩm
+    // Thử render có ảnh sản phẩm và lấy dataURL
     canvas = await renderReceiptToCanvas(options, true);
-  } catch {
+    imgData = canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('Lỗi khi render PDF có ảnh, fallback sang bản không ảnh:', err);
     // Nếu có lỗi do ảnh bảo mật (tainted), vẽ lại không có ảnh để luôn xuất được PDF thành công
     canvas = await renderReceiptToCanvas(options, false);
+    imgData = canvas.toDataURL('image/png');
   }
-
-  // Chuyển canvas sang ảnh PNG dataURL
-  const imgData = canvas.toDataURL('image/png');
 
   // Khổ giấy chuẩn A4 (210mm x 297mm)
   const pdf = new jsPDF({

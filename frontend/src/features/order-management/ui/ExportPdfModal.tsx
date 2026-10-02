@@ -16,7 +16,7 @@ import {
 import { Order } from '@/entities/order';
 import { formatVND } from '@/shared/lib/formatters';
 import { getFullImageUrl } from '@/shared/lib/uploadApi';
-import { exportOrdersPdf, printOrders } from '../lib/exportOrdersPdf';
+import { exportOrdersPdf, printOrders, cleanProductNote } from '../lib/exportOrdersPdf';
 
 interface ExportPdfModalProps {
   isOpen: boolean;
@@ -45,9 +45,19 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
       const name = mainCust?.name || firstOrder.customerName || '';
       const phone = mainCust?.phone || firstOrder.customerPhone || '';
 
+      // Tự động nhận diện địa chỉ nếu có
+      let addr = mainCust?.address || '';
+      if (!addr) {
+        const rawNote = firstOrder.note || mainCust?.note || '';
+        const match = rawNote.match(/^(?:đ\/c|dc|địa chỉ)[:\s]*(.*)$/i);
+        if (match) {
+          addr = match[1].trim();
+        }
+      }
+
       setCustomerName(name);
       setCustomerPhone(phone);
-      setCustomerAddress('');
+      setCustomerAddress(addr);
       setCustomerNote('');
     }
   }, [orders, isOpen]);
@@ -78,7 +88,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
       qty,
       unitPrice,
       amount,
-      note: order.note || cust?.note,
+      note: cleanProductNote(order.note || cust?.note),
     };
   });
 
@@ -292,6 +302,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                           <img
                             src={getFullImageUrl(row.imageUrl)}
                             alt={row.title}
+                            crossOrigin="anonymous"
                             className="w-10 h-10 object-cover rounded-xl border border-slate-200 dark:border-slate-700 mx-auto"
                           />
                         ) : (
